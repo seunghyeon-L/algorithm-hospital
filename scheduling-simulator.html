@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>알고리즘 단계별 시뮬레이터 — 수술 스케줄링</title>
+<style>
+:root{
+  --ink:#0f172a;--sub:#475569;--line:#e2e8f0;--bg:#f8fafc;
+  --blue:#2563eb;--violet:#7c3aed;--teal:#0d9488;--orange:#ea580c;
+  --green:#16a34a;--rose:#e11d48;--yellow:#ca8a04;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Pretendard","Segoe UI",system-ui,-apple-system,sans-serif;
+  color:var(--ink);background:var(--bg);line-height:1.7;}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px 90px;}
+header.hero{background:linear-gradient(135deg,#0f766e 0%,#1e40af 55%,#6d28d9 100%);
+  color:#fff;padding:48px 20px 38px;text-align:center;}
+header.hero h1{margin:0 0 10px;font-size:30px;letter-spacing:-0.5px;}
+header.hero p{margin:0 auto;opacity:.92;font-size:15px;max-width:780px;}
+nav.toc{position:sticky;top:0;z-index:10;background:#ffffffef;
+  backdrop-filter:blur(6px);border-bottom:1px solid var(--line);
+  padding:9px 14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+nav.toc a{font-size:13px;color:#334155;text-decoration:none;background:var(--bg);
+  border:1px solid var(--line);padding:5px 11px;border-radius:999px;}
+nav.toc a:hover{background:#eef2ff;border-color:#c7d2fe;}
+h2.sec{font-size:24px;margin:46px 0 6px;display:flex;align-items:center;gap:10px;scroll-margin-top:60px;}
+h2.sec .bar{width:6px;height:24px;border-radius:3px;display:inline-block;}
+.sec-desc{color:var(--sub);margin:0 0 18px;font-size:14.5px;}
+.sim-card{background:#fff;border:1px solid var(--line);border-radius:16px;
+  padding:20px 22px;box-shadow:0 1px 4px rgba(15,23,42,.06);margin-bottom:18px;}
+.sim-card h3{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:8px;}
+.tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;color:#fff;}
+.t-blue{background:var(--blue);}.t-violet{background:var(--violet);}
+.t-teal{background:var(--teal);}.t-orange{background:var(--orange);}
+.t-green{background:var(--green);}
+/* Controls */
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 10px;}
+.btn{padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:#f8fafc;
+  color:var(--ink);font-size:13px;cursor:pointer;font-weight:600;transition:background .15s;}
+.btn:hover:not(:disabled){background:#eef2ff;border-color:#c7d2fe;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn.primary:hover:not(:disabled){background:#1d4ed8;}
+.step-info{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
+  padding:10px 14px;font-size:13.5px;color:#166534;min-height:42px;margin-bottom:12px;}
+.step-counter{font-size:12px;color:var(--sub);margin-left:auto;}
+/* SVG DAG */
+.dag-wrap{overflow:auto;}
+svg.dag{display:block;}
+.node-circle{r:22;stroke-width:2;}
+.node-label{font-size:12px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;}
+.node-sub{font-size:10px;text-anchor:middle;dominant-baseline:central;pointer-events:none;}
+.edge-line{stroke:#94a3b8;stroke-width:2;fill:none;marker-end:url(#arrow);}
+.edge-line.critical{stroke:var(--orange);stroke-width:2.5;}
+/* Tables */
+.sim-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;}
+.sim-table th,.sim-table td{padding:7px 10px;border:1px solid var(--line);text-align:center;}
+.sim-table th{background:#f1f5f9;font-weight:700;}
+.hl-green{background:#dcfce7 !important;color:#166534;font-weight:700;}
+.hl-orange{background:#ffedd5 !important;color:#9a3412;font-weight:700;}
+.hl-blue{background:#dbeafe !important;color:#1e40af;font-weight:700;}
+.hl-gray{background:#f1f5f9 !important;color:#64748b;}
+.hl-violet{background:#ede9fe !important;color:#6d28d9;font-weight:700;}
+.queue-box{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+.queue-item{padding:4px 12px;border-radius:8px;font-size:13px;font-weight:700;
+  border:2px solid;background:#fff;}
+.result-list{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0;}
+.result-item{padding:3px 11px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;background:var(--green);}
+/* Two-col layout for side-by-side panels */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:720px){.two-col{grid-template-columns:1fr;}}
+.panel{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+.panel h4{margin:0 0 8px;font-size:13px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.03em;}
+/* Gantt */
+.gantt-wrap{overflow-x:auto;margin-top:8px;}
+canvas.gantt{display:block;border-radius:8px;border:1px solid var(--line);}
+/* Chart canvas */
+canvas.chart{display:block;border-radius:8px;border:1px solid var(--line);background:#fff;}
+/* Formula box */
+.formula{background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;
+  padding:8px 12px;margin:8px 0;font-size:13px;color:#4c1d95;font-family:"JetBrains Mono",Consolas,monospace;}
+/* OX crossover */
+.ox-grid{display:flex;flex-direction:column;gap:6px;margin:6px 0;}
+.ox-row{display:flex;align-items:center;gap:6px;}
+.ox-label{font-size:12px;font-weight:700;width:60px;color:var(--sub);}
+.ox-cells{display:flex;gap:3px;}
+.ox-cell{width:34px;height:34px;border-radius:6px;border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:#fff;transition:background .25s,border-color .25s;}
+.ox-cell.seg{background:#dbeafe;border-color:#93c5fd;color:#1e40af;}
+.ox-cell.filled{background:#dcfce7;border-color:#86efac;color:#166534;}
+.ox-cell.cursor{background:#fef9c3;border-color:#fde047;color:#92400e;}
+/* SA log */
+.sa-log{height:110px;overflow-y:auto;background:#0f172a;border-radius:8px;
+  padding:8px 10px;font-family:"JetBrains Mono",Consolas,monospace;font-size:11.5px;color:#94a3b8;}
+.sa-log .accept{color:#86efac;}.sa-log .reject{color:#fca5a5;}.sa-log .worse-accept{color:#fde047;}
+footer{text-align:center;color:#94a3b8;font-size:13px;margin-top:46px;}
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>알고리즘 단계별 시뮬레이터</h1>
+  <p>위상정렬(Kahn) · CPM · 베이스라인 그리디 · 시뮬레이티드 어닐링(SA) · 유전 알고리즘(GA) 을<br>
+  ▶ 다음 버튼으로 한 단계씩 직접 따라가며 이해하세요.</p>
+</header>
+
+<nav class="toc">
+  <a href="#sec-topo">1. 위상정렬</a>
+  <a href="#sec-cpm">2. CPM</a>
+  <a href="#sec-greedy">3. 그리디</a>
+  <a href="#sec-sa">4. SA</a>
+  <a href="#sec-ga">5. GA</a>
+</nav>
+
+<div class="wrap">
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 1 — 위상정렬 (Kahn)
+════════════════════════════════════════════════ -->
+<h2 class="sec" id="sec-topo"><span class="bar" style="background:var(--blue)"></span>1. 위상정렬 — Kahn 알고리즘</h2>
+<p class="sec-desc">진입차수(in-degree) 0인 노드를 큐에서 꺼내며 실행 순서를 결정합니다. 6개 작업: A(10) B(20) C(40) D(20) E(15) F(25), 선후관계: A→C, B→D, C→E, D→E, E→F</p>
+
+<div class="sim-card">
+  <h3><span class="tag t-blue">Kahn</span> 단계별 시뮬레이션</h3>
+  <div class="controls">
+    <button class="btn" id="topo-prev">◀ 이전</button>
+    <button class="btn primary" id="topo-next">▶ 다음</button>
+    <button class="btn" id="topo-auto">⏵ 자동재생</button>
+    <button class="btn" id="topo-reset">↺ 리셋</button>
+    <span class="step-counter" id="topo-counter">단계 0 / 12</span>
+  </div>
+  <div class="step-info" id="topo-info">▶ 다음을 눌러 시작하세요.</div>
+  <div class="two-col">
+    <div>
+      <div class="dag-wrap">
+        <svg class="dag" id="topo-svg" width="420" height="260" viewBox="0 0 420 260">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+            </marker>
+            <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="var(--orange)"/>
+            </marker>
+          </defs>
+          <!-- edges drawn by JS -->
+          <g id="topo-edges"></g>
+          <!-- nodes drawn by JS -->
+          <g id="topo-nodes"></g>
+        </svg>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <h4>진입차수 테이블</h4>
+        <table class="sim-table" id="topo-indeg-table">
+          <thead><tr><th>작업</th><th>진입차수</th></tr></thead>
+          <tbody id="topo-indeg-body"></tbody>
+        </table>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h4>큐 (Queue)</h4>
+        <div class="queue-box" id="topo-queue"></div>
+        <h4 style="margin-top:10px">결과 (Result)</h4>
+        <div class="result-list" id="topo-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 2 — CPM Forward Pass
+════════════════════════════════════════════════ -->
+<h2 class="sec" id="sec-cpm"><span class="bar" style="background:var(--teal)"></span>2. CPM — 임계경로 순방향 계산</h2>
+<p class="sec-desc">위상 순서대로 각 노드의 ES(earliest start) · EF(earliest finish)를 계산하고, 마지막에 임계경로와 여유(float)를 표시합니다.</p>
+
+<div class="sim-card">
+  <h3><span class="tag t-teal">CPM</span> 단계별 시뮬레이션</h3>
+  <div class="controls">
+    <button class="btn" id="cpm-prev">◀ 이전</button>
+    <button class="btn primary" id="cpm-next">▶ 다음</button>
+    <button class="btn" id="cpm-auto">⏵ 자동재생</button>
+    <button class="btn" id="cpm-reset">↺ 리셋</button>
+    <span class="step-counter" id="cpm-counter">단계 0 / 10</span>
+  </div>
+  <div class="step-info" id="cpm-info">▶ 다음을 눌러 시작하세요.</div>
+  <div class="formula" id="cpm-formula">ES(v) = max{ EF(pred) } (선행 없으면 0) &nbsp;|&nbsp; EF(v) = ES(v) + dur(v)</div>
+  <div class="two-col">
+    <div class="dag-wrap">
+      <svg class="dag" id="cpm-svg" width="420" height="260" viewBox="0 0 420 260">
+        <defs>
+          <marker id="cpm-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+          </marker>
+          <marker id="cpm-arrow-orange" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="var(--orange)"/>
+          </marker>
+        </defs>
+        <g id="cpm-edges"></g>
+        <g id="cpm-nodes"></g>
+      </svg>
+    </div>
+    <div>
+      <div class="panel">
+        <h4>ES / EF 테이블</h4>
+        <table class="sim-table" id="cpm-table">
+          <thead><tr><th>작업</th><th>dur</th><th>ES</th><th>EF</th><th>float</th></tr></thead>
+          <tbody id="cpm-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 3 — 그리디 (수술실 2개)
+════════════════════════════════════════════════ -->
+<h2 class="sec" id="sec-greedy"><span class="bar" style="background:var(--orange)"></span>3. 베이스라인 그리디 (수술실 2개)</h2>
+<p class="sec-desc">위상 순서대로 작업을 꺼내 가장 빨리 비는 수술실에 배정합니다. 시작 시각 = max(선행 종료, 수술실 여유 시각).</p>
+
+<div class="sim-card">
+  <h3><span class="tag t-orange">Greedy</span> 단계별 시뮬레이션</h3>
+  <div class="controls">
+    <button class="btn" id="gr-prev">◀ 이전</button>
+    <button class="btn primary" id="gr-next">▶ 다음</button>
+    <button class="btn" id="gr-auto">⏵ 자동재생</button>
+    <button class="btn" id="gr-reset">↺ 리셋</button>
+    <span class="step-counter" id="gr-counter">단계 0 / 6</span>
+  </div>
+  <div class="step-info" id="gr-info">▶ 다음을 눌러 시작하세요.</div>
+  <div class="gantt-wrap">
+    <canvas class="gantt" id="gr-gantt" width="760" height="140"></canvas>
+  </div>
+  <div class="panel" style="margin-top:10px">
+    <h4>배정 상태</h4>
+    <table class="sim-table" id="gr-assign-table">
+      <thead><tr><th>작업</th><th>수술실</th><th>시작</th><th>종료</th><th>선행 완료</th></tr></thead>
+      <tbody id="gr-assign-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 4 — SA
+════════════════════════════════════════════════ -->
+<h2 class="sec" id="sec-sa"><span class="bar" style="background:var(--violet)"></span>4. 시뮬레이티드 어닐링 (SA)</h2>
+<p class="sec-desc">고온에서는 나쁜 해도 확률적으로 수용해 지역 최솟값을 탈출합니다. 온도가 낮아질수록 개선 이동만 수용합니다.</p>
+
+<div class="sim-card">
+  <h3><span class="tag t-violet">SA</span> 단계별 시뮬레이션</h3>
+  <div class="controls">
+    <button class="btn" id="sa-prev">◀ 이전</button>
+    <button class="btn primary" id="sa-next">▶ 다음</button>
+    <button class="btn" id="sa-auto">⏵ 자동재생</button>
+    <button class="btn" id="sa-reset">↺ 리셋</button>
+    <span class="step-counter" id="sa-counter">단계 0 / 60</span>
+  </div>
+  <div class="step-info" id="sa-info">▶ 다음을 눌러 시작하세요.</div>
+  <div class="formula">수용 확률: P = min{1, exp(−Δ/T)} &nbsp;|&nbsp; 냉각: T ← α·T &nbsp;(α = 0.92)</div>
+  <div class="two-col">
+    <div>
+      <canvas class="chart" id="sa-chart" width="420" height="220"></canvas>
+    </div>
+    <div>
+      <canvas class="chart" id="sa-temp-chart" width="420" height="100" style="margin-bottom:8px"></canvas>
+      <h4 style="font-size:12px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.03em;margin:0 0 4px">반복 로그</h4>
+      <div class="sa-log" id="sa-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SECTION 5 — GA
+════════════════════════════════════════════════ -->
+<h2 class="sec" id="sec-ga"><span class="bar" style="background:var(--green)"></span>5. 유전 알고리즘 (GA)</h2>
+<p class="sec-desc">OX(Order Crossover)로 부모 염색체의 순열 유효성을 유지하며 자손을 생성합니다. 세대를 거듭할수록 최고 적합도(비용)가 감소합니다.</p>
+
+<div class="sim-card">
+  <h3><span class="tag t-green">GA</span> 세대별 최고 적합도 + OX Crossover</h3>
+  <div class="controls">
+    <button class="btn" id="ga-prev">◀ 이전</button>
+    <button class="btn primary" id="ga-next">▶ 다음</button>
+    <button class="btn" id="ga-auto">⏵ 자동재생</button>
+    <button class="btn" id="ga-reset">↺ 리셋</button>
+    <span class="step-counter" id="ga-counter">단계 0 / 25</span>
+  </div>
+  <div class="step-info" id="ga-info">▶ 다음을 눌러 시작하세요.</div>
+  <div class="two-col">
+    <div>
+      <canvas class="chart" id="ga-chart" width="420" height="220"></canvas>
+    </div>
+    <div>
+      <div class="panel">
+        <h4>OX Crossover 단계</h4>
+        <p style="font-size:12px;color:var(--sub);margin:0 0 6px">두 부모 사이에서 파란 구간(parent1)을 복사 후,<br>나머지 위치를 parent2 순서대로(순환) 채웁니다.</p>
+        <div class="ox-grid" id="ox-grid">
+          <div class="ox-row"><span class="ox-label">Parent1</span><div class="ox-cells" id="ox-p1"></div></div>
+          <div class="ox-row"><span class="ox-label">Parent2</span><div class="ox-cells" id="ox-p2"></div></div>
+          <div class="ox-row"><span class="ox-label">Child</span><div class="ox-cells" id="ox-child"></div></div>
+        </div>
+        <div id="ox-explain" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .wrap -->
+<footer>알고리즘 단계별 시뮬레이터 · 수술 스케줄링 교육용 · 제주대학교 2026-1학기 알고리즘</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   SHARED DATA
+════════════════════════════════════════════════════════════ */
+const TASKS = {
+  A:{name:'A',label:'검사1',dur:10},
+  B:{name:'B',label:'검사2',dur:20},
+  C:{name:'C',label:'수술1',dur:40},
+  D:{name:'D',label:'수술2',dur:20},
+  E:{name:'E',label:'처치',dur:15},
+  F:{name:'F',label:'회복',dur:25}
+};
+const EDGES = [['A','C'],['B','D'],['C','E'],['D','E'],['E','F']];
+// Node layout positions in SVG (420×260)
+const NODE_POS = {
+  A:{x:60,y:80},
+  B:{x:60,y:180},
+  C:{x:180,y:80},
+  D:{x:180,y:180},
+  E:{x:300,y:130},
+  F:{x:400,y:130}
+};
+const NODE_COLORS = {
+  default:{fill:'#f8fafc',stroke:'#94a3b8',text:'#0f172a'},
+  active: {fill:'#dbeafe',stroke:'#3b82f6',text:'#1e40af'},
+  done:   {fill:'#dcfce7',stroke:'#22c55e',text:'#166534'},
+  critical:{fill:'#ffedd5',stroke:'#f97316',text:'#9a3412'},
+  float:  {fill:'#fef9c3',stroke:'#eab308',text:'#92400e'}
+};
+
+/* ─── Utility: draw DAG nodes+edges ─── */
+function buildDAGBase(svgEl, edgesEl, nodesEl, states, edgeStates){
+  // edges
+  edgesEl.innerHTML = '';
+  EDGES.forEach(([u,v])=>{
+    const p=NODE_POS[u], q=NODE_POS[v];
+    const dx=q.x-p.x,dy=q.y-p.y,len=Math.sqrt(dx*dx+dy*dy);
+    const r=24;
+    const sx=p.x+dx/len*r, sy=p.y+dy/len*r;
+    const ex=q.x-dx/len*(r+6), ey=q.y-dy/len*(r+6);
+    const state=(edgeStates||{})[u+'→'+v]||'default';
+    const strokeColor=state==='critical'?'var(--orange)':'#94a3b8';
+    const markerId=state==='critical'?'url(#arrow-orange)':'url(#arrow)';
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',sx);line.setAttribute('y1',sy);
+    line.setAttribute('x2',ex);line.setAttribute('y2',ey);
+    line.setAttribute('stroke',strokeColor);
+    line.setAttribute('stroke-width',state==='critical'?'2.5':'2');
+    line.setAttribute('marker-end',markerId);
+    edgesEl.appendChild(line);
+  });
+  // nodes
+  nodesEl.innerHTML = '';
+  Object.keys(TASKS).forEach(k=>{
+    const t=TASKS[k], pos=NODE_POS[k];
+    const st=states[k]||'default';
+    const col=NODE_COLORS[st];
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',pos.x);circle.setAttribute('cy',pos.y);circle.setAttribute('r',24);
+    circle.setAttribute('fill',col.fill);circle.setAttribute('stroke',col.stroke);circle.setAttribute('stroke-width','2');
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pos.x);txt.setAttribute('y',pos.y-5);
+    txt.setAttribute('text-anchor','middle');txt.setAttribute('dominant-baseline','central');
+    txt.setAttribute('font-size','13');txt.setAttribute('font-weight','800');txt.setAttribute('fill',col.text);
+    txt.textContent=k;
+    const sub=document.createElementNS('http://www.w3.org/2000/svg','text');
+    sub.setAttribute('x',pos.x);sub.setAttribute('y',pos.y+9);
+    sub.setAttribute('text-anchor','middle');sub.setAttribute('dominant-baseline','central');
+    sub.setAttribute('font-size','9.5');sub.setAttribute('fill',col.text);
+    sub.textContent=t.label;
+    g.appendChild(circle);g.appendChild(txt);g.appendChild(sub);
+    nodesEl.appendChild(g);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION 1 — 위상정렬 Kahn
+════════════════════════════════════════════════════════════ */
+(function(){
+  // Build steps
+  const initialIndeg={A:0,B:0,C:1,D:1,E:2,F:1};
+  const topoOrder=['A','B','C','D','E','F'];
+  // Pre-compute all steps
+  function buildSteps(){
+    const steps=[];
+    const indeg={...initialIndeg};
+    const queue=[];
+    const result=[];
+    const nodeState={A:'default',B:'default',C:'default',D:'default',E:'default',F:'default'};
+    const succs={A:['C'],B:['D'],C:['E'],D:['E'],E:['F'],F:[]};
+    // Step 0: initial state — show in-degrees, empty queue+result
+    steps.push({
+      info:'초기 상태: 모든 작업의 진입차수를 계산합니다.',
+      indeg:{...indeg},queue:[...queue],result:[...result],
+      nodeState:{...nodeState},processing:null
+    });
+    // Step 1: initialize queue with 0-indeg nodes
+    const zeros=topoOrder.filter(n=>indeg[n]===0);
+    zeros.forEach(n=>queue.push(n));
+    steps.push({
+      info:'진입차수 0인 작업(A, B)을 큐에 추가합니다.',
+      indeg:{...indeg},queue:[...queue],result:[...result],
+      nodeState:{...nodeState},processing:null
+    });
+    // Process each node
+    while(queue.length>0){
+      // sort queue alphabetically for determinism
+      queue.sort();
+      const u=queue.shift();
+      steps.push({
+        info:`큐에서 "${u}"(${TASKS[u].label})를 꺼냅니다.`,
+        indeg:{...indeg},queue:[...queue],result:[...result],
+        nodeState:{...nodeState},processing:u
+      });
+      nodeState[u]='active';
+      // Append to result
+      result.push(u);
+      // Decrement successors
+      const newlyZero=[];
+      succs[u].forEach(w=>{
+        indeg[w]--;
+        if(indeg[w]===0){queue.push(w);newlyZero.push(w);}
+      });
+      const succStr=succs[u].length>0?`후속(${succs[u].join(',')})의 진입차수 감소`:`후속 없음`;
+      const queueStr=newlyZero.length>0?` → ${newlyZero.join(',')} 큐에 추가`:'';
+      steps.push({
+        info:`"${u}" 결과에 추가. ${succStr}${queueStr}.`,
+        indeg:{...indeg},queue:[...queue],result:[...result],
+        nodeState:{...nodeState},processing:null
+      });
+      nodeState[u]='done';
+    }
+    steps.push({
+      info:`위상정렬 완료! 결과: ${result.join(' → ')}`,
+      indeg:{...indeg},queue:[],result:[...result],
+      nodeState:{...nodeState},processing:null
+    });
+    return steps;
+  }
+
+  const steps=buildSteps();
+  let cur=0;
+  let autoTimer=null;
+
+  function render(){
+    const s=steps[cur];
+    document.getElementById('topo-info').textContent=s.info;
+    document.getElementById('topo-counter').textContent=`단계 ${cur} / ${steps.length-1}`;
+    // Draw DAG
+    const nState={...s.nodeState};
+    if(s.processing) nState[s.processing]='active';
+    buildDAGBase(
+      document.getElementById('topo-svg'),
+      document.getElementById('topo-edges'),
+      document.getElementById('topo-nodes'),
+      nState, {}
+    );
+    // In-degree table
+    const tbody=document.getElementById('topo-indeg-body');
+    tbody.innerHTML='';
+    Object.keys(s.indeg).sort().forEach(k=>{
+      const tr=document.createElement('tr');
+      const cls=s.nodeState[k]==='done'?'hl-green':s.processing===k?'hl-blue':'';
+      tr.innerHTML=`<td class="${cls}" style="font-weight:700">${k} (${TASKS[k].label})</td><td class="${cls}">${s.indeg[k]}</td>`;
+      tbody.appendChild(tr);
+    });
+    // Queue
+    const qDiv=document.getElementById('topo-queue');
+    qDiv.innerHTML='';
+    if(s.queue.length===0){
+      const sp=document.createElement('span');sp.style.color='#94a3b8';sp.style.fontSize='13px';sp.textContent='(비어있음)';
+      qDiv.appendChild(sp);
+    } else {
+      s.queue.forEach(n=>{
+        const d=document.createElement('div');d.className='queue-item';
+        d.style.borderColor='#3b82f6';d.style.color='#1e40af';
+        d.textContent=`${n}(${TASKS[n].label})`;
+        qDiv.appendChild(d);
+      });
+    }
+    // Result
+    const rDiv=document.getElementById('topo-result');
+    rDiv.innerHTML='';
+    s.result.forEach(n=>{
+      const d=document.createElement('div');d.className='result-item';
+      d.textContent=n;
+      rDiv.appendChild(d);
+    });
+    document.getElementById('topo-prev').disabled=(cur===0);
+    document.getElementById('topo-next').disabled=(cur===steps.length-1);
+  }
+
+  function stopAuto(){
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    document.getElementById('topo-auto').textContent='⏵ 자동재생';
+  }
+  document.getElementById('topo-prev').addEventListener('click',()=>{if(cur>0){cur--;render();}});
+  document.getElementById('topo-next').addEventListener('click',()=>{if(cur<steps.length-1){cur++;render();}});
+  document.getElementById('topo-auto').addEventListener('click',()=>{
+    if(autoTimer){stopAuto();return;}
+    document.getElementById('topo-auto').textContent='⏸ 일시정지';
+    autoTimer=setInterval(()=>{
+      if(cur>=steps.length-1){stopAuto();return;}
+      cur++;render();
+    },1000);
+  });
+  document.getElementById('topo-reset').addEventListener('click',()=>{stopAuto();cur=0;render();});
+  render();
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION 2 — CPM Forward Pass
+════════════════════════════════════════════════════════════ */
+(function(){
+  const topoOrder=['A','B','C','D','E','F'];
+  const preds={A:[],B:[],C:['A'],D:['B'],E:['C','D'],F:['E']};
+  const dur={A:10,B:20,C:40,D:20,E:15,F:25};
+  // Critical path: A→C→E→F = 10+40+15+25 = 90
+  // B→D→E→F = 20+20+15+25 = 80
+  // Total project = 90
+  const criticalNodes=['A','C','E','F'];
+  const criticalEdges=['A→C','C→E','E→F'];
+
+  function buildSteps(){
+    const steps=[];
+    const esMap={};const efMap={};
+    const nodeState={A:'default',B:'default',C:'default',D:'default',E:'default',F:'default'};
+    // initial
+    steps.push({
+      info:'CPM 초기 상태: 모든 작업의 ES, EF를 계산합니다. 위상 순서대로 진행.',
+      esMap:{},efMap:{},nodeState:{...nodeState},currentNode:null,
+      formula:'ES(v) = max{ EF(pred) } | EF(v) = ES(v) + dur(v)',showCritical:false
+    });
+    topoOrder.forEach(v=>{
+      // compute
+      const predEFs=preds[v].map(p=>efMap[p]||0);
+      const es=predEFs.length>0?Math.max(...predEFs):0;
+      const ef=es+dur[v];
+      const predStr=preds[v].length>0?`max(EF(${preds[v].join(',')})=${predEFs.join(',')})=`:'(선행 없음) ';
+      steps.push({
+        info:`"${v}"(${TASKS[v].label}) 계산 중. ES=${v}==${predStr}${es}, EF=${es}+${dur[v]}=${ef}`,
+        esMap:{...esMap,[v]:es},efMap:{...efMap,[v]:ef},
+        nodeState:{...nodeState,[v]:'active'},currentNode:v,
+        formula:`ES(${v})=${predStr}${es} | EF(${v})=${es}+${dur[v]}=${ef}`,showCritical:false
+      });
+      esMap[v]=es;efMap[v]=ef;
+      nodeState[v]='done';
+      steps.push({
+        info:`"${v}" 완료: ES=${es}, EF=${ef}`,
+        esMap:{...esMap},efMap:{...efMap},
+        nodeState:{...nodeState},currentNode:null,
+        formula:`ES(${v})=${es}, EF(${v})=${ef}`,showCritical:false
+      });
+    });
+    // final — mark critical path
+    const projectDur=efMap['F']||90;
+    const floatMap={};
+    // LS/LF backward
+    const lsMap={};const lfMap={};
+    lfMap['F']=projectDur;
+    [...topoOrder].reverse().forEach(v=>{
+      if(lfMap[v]===undefined)lfMap[v]=projectDur;
+      lsMap[v]=lfMap[v]-dur[v];
+      preds[v].forEach(p=>{
+        if(lfMap[p]===undefined||lfMap[p]>lsMap[v])lfMap[p]=lsMap[v];
+      });
+    });
+    Object.keys(TASKS).forEach(v=>{floatMap[v]=(lsMap[v]||0)-(esMap[v]||0);});
+    const finalNodeState={};
+    Object.keys(TASKS).forEach(v=>{
+      finalNodeState[v]=criticalNodes.includes(v)?'critical':'float';
+    });
+    // B and D have float>0, mark yellow
+    finalNodeState['B']='float';finalNodeState['D']='float';
+    steps.push({
+      info:`임계경로: A→C→E→F (길이 90). B,D는 여유(float)가 있습니다.`,
+      esMap:{...esMap},efMap:{...efMap},
+      nodeState:{...finalNodeState},currentNode:null,
+      formula:`프로젝트 기간 = max EF(F) = 90 | float(B)=${floatMap['B']}, float(D)=${floatMap['D']}`,
+      showCritical:true,floatMap:{...floatMap}
+    });
+    return steps;
+  }
+
+  const steps=buildSteps();
+  let cur=0;let autoTimer=null;
+
+  function render(){
+    const s=steps[cur];
+    document.getElementById('cpm-info').textContent=s.info;
+    document.getElementById('cpm-counter').textContent=`단계 ${cur} / ${steps.length-1}`;
+    document.getElementById('cpm-formula').textContent=s.formula;
+    const edgeStates={};
+    if(s.showCritical)criticalEdges.forEach(e=>{edgeStates[e]='critical';});
+    buildDAGBase(
+      document.getElementById('cpm-svg'),
+      document.getElementById('cpm-edges'),
+      document.getElementById('cpm-nodes'),
+      s.nodeState, edgeStates
+    );
+    // Overlay ES/EF on nodes
+    const nodesG=document.getElementById('cpm-nodes');
+    // add ES/EF labels
+    Object.keys(s.esMap).forEach(k=>{
+      const pos=NODE_POS[k];
+      const es=s.esMap[k];const ef=s.efMap[k];
+      // find existing node group and add small text
+      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',pos.x);txt.setAttribute('y',pos.y+18);
+      txt.setAttribute('text-anchor','middle');txt.setAttribute('font-size','8');
+      txt.setAttribute('fill','#475569');
+      txt.textContent=`${es}–${ef}`;
+      nodesG.appendChild(txt);
+    });
+    // Table
+    const tbody=document.getElementById('cpm-body');
+    tbody.innerHTML='';
+    ['A','B','C','D','E','F'].forEach(k=>{
+      const es=s.esMap[k];const ef=s.efMap[k];
+      const fl=s.floatMap?s.floatMap[k]:'—';
+      const isCrit=criticalNodes.includes(k)&&s.showCritical;
+      const isFloat=(k==='B'||k==='D')&&s.showCritical;
+      const cls=isCrit?'hl-orange':isFloat?'hl-gray':s.currentNode===k?'hl-blue':s.nodeState[k]==='done'?'hl-green':'';
+      tbody.innerHTML+=`<tr>
+        <td class="${cls}" style="font-weight:700">${k}</td>
+        <td class="${cls}">${dur[k]}</td>
+        <td class="${cls}">${es!==undefined?es:'—'}</td>
+        <td class="${cls}">${ef!==undefined?ef:'—'}</td>
+        <td class="${cls}">${fl!=='—'&&s.showCritical?fl:'—'}</td>
+      </tr>`;
+    });
+    document.getElementById('cpm-prev').disabled=(cur===0);
+    document.getElementById('cpm-next').disabled=(cur===steps.length-1);
+  }
+
+  function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}document.getElementById('cpm-auto').textContent='⏵ 자동재생';}
+  document.getElementById('cpm-prev').addEventListener('click',()=>{if(cur>0){cur--;render();}});
+  document.getElementById('cpm-next').addEventListener('click',()=>{if(cur<steps.length-1){cur++;render();}});
+  document.getElementById('cpm-auto').addEventListener('click',()=>{
+    if(autoTimer){stopAuto();return;}
+    document.getElementById('cpm-auto').textContent='⏸ 일시정지';
+    autoTimer=setInterval(()=>{if(cur>=steps.length-1){stopAuto();return;}cur++;render();},1000);
+  });
+  document.getElementById('cpm-reset').addEventListener('click',()=>{stopAuto();cur=0;render();});
+  render();
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION 3 — 그리디 Gantt
+════════════════════════════════════════════════════════════ */
+(function(){
+  const topoOrder=['A','B','C','D','E','F'];
+  const preds={A:[],B:[],C:['A'],D:['B'],E:['C','D'],F:['E']};
+  const dur={A:10,B:20,C:40,D:20,E:15,F:25};
+  const COLORS=['#3b82f6','#8b5cf6','#f97316','#ec4899','#14b8a6','#84cc16'];
+  const TASK_COLOR={A:COLORS[0],B:COLORS[1],C:COLORS[2],D:COLORS[3],E:COLORS[4],F:COLORS[5]};
+
+  function buildSteps(){
+    const steps=[];
+    const assigned={};// k -> {room, start, end}
+    const roomFree=[0,0];// room 0,1
+    const MAX_TIME=100;
+    steps.push({info:'그리디 초기 상태: 수술실 2개(R1, R2) 모두 시각 0에 비어 있습니다.',assigned:{},roomFree:[0,0]});
+    topoOrder.forEach((v,idx)=>{
+      const predEnd=preds[v].length>0?Math.max(...preds[v].map(p=>assigned[p]?assigned[p].end:0)):0;
+      // pick earliest free room
+      const r=roomFree[0]<=roomFree[1]?0:1;
+      const start=Math.max(predEnd,roomFree[r]);
+      const end=start+dur[v];
+      roomFree[r]=end;
+      assigned[v]={room:r,start,end};
+      steps.push({
+        info:`"${v}"(${TASKS[v].label}) → 수술실 R${r+1} 배정. 선행완료=${predEnd}, R${r+1} 여유=${roomFree[r]-dur[v]}, 시작=${start}, 종료=${end}`,
+        assigned:{...JSON.parse(JSON.stringify(assigned))},roomFree:[...roomFree],current:v
+      });
+    });
+    const makespan=Math.max(...Object.values(assigned).map(a=>a.end));
+    steps.push({info:`배정 완료! Makespan = ${makespan}. A→C→E→F 경로가 임계경로(90).`,assigned:{...JSON.parse(JSON.stringify(assigned))},roomFree:[...roomFree],current:null,done:true});
+    return steps;
+  }
+
+  const steps=buildSteps();
+  let cur=0;let autoTimer=null;
+  const canvas=document.getElementById('gr-gantt');
+  const ctx=canvas.getContext('2d');
+
+  function drawGantt(s){
+    const W=canvas.width,H=canvas.height;
+    const marginL=60,marginT=24,marginB=28,rowH=38,gap=8;
+    const timeMax=100;
+    const scaleX=(W-marginL-10)/timeMax;
+    ctx.clearRect(0,0,W,H);
+    // Background
+    ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,W,H);
+    // Grid lines every 10
+    ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+    for(let t=0;t<=timeMax;t+=10){
+      const x=marginL+t*scaleX;
+      ctx.beginPath();ctx.moveTo(x,marginT);ctx.lineTo(x,H-marginB);ctx.stroke();
+      ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';
+      ctx.fillText(t,x,H-marginB+12);
+    }
+    // Row labels
+    ['R1','R2'].forEach((lbl,i)=>{
+      const y=marginT+i*(rowH+gap);
+      ctx.fillStyle='#334155';ctx.font='bold 12px sans-serif';ctx.textAlign='right';
+      ctx.fillText(lbl,marginL-6,y+rowH/2+4);
+      // Row bg
+      ctx.fillStyle=i===0?'#f0f9ff':'#faf5ff';
+      ctx.fillRect(marginL,y,W-marginL-10,rowH);
+      ctx.strokeStyle='#e2e8f0';ctx.strokeRect(marginL,y,W-marginL-10,rowH);
+    });
+    // Bars
+    Object.keys(s.assigned).forEach(k=>{
+      const a=s.assigned[k];
+      const x=marginL+a.start*scaleX;
+      const w=a.end*scaleX-a.start*scaleX;
+      const y=marginT+a.room*(rowH+gap);
+      const color=TASK_COLOR[k];
+      ctx.fillStyle=color;
+      ctx.globalAlpha=s.current===k?1.0:0.78;
+      roundRect(ctx,x+1,y+3,w-2,rowH-6,4);
+      ctx.fill();
+      ctx.globalAlpha=1;
+      // Label
+      if(w>18){
+        ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+        ctx.fillText(k,x+w/2,y+rowH/2+1);
+        if(w>35){ctx.font='9px sans-serif';ctx.fillText(`${a.start}–${a.end}`,x+w/2,y+rowH/2+12);}
+      }
+    });
+    // Current task highlight
+    if(s.current){
+      const a=s.assigned[s.current];
+      if(a){
+        ctx.strokeStyle='#0f172a';ctx.lineWidth=2;
+        const x=marginL+a.start*scaleX,y=marginT+a.room*(rowH+gap),w=a.end*scaleX-a.start*scaleX;
+        ctx.strokeRect(x+1,y+3,w-2,rowH-6);
+      }
+    }
+    // Time axis label
+    ctx.fillStyle='#475569';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('시각(분)',W/2,H);
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+  }
+
+  function render(){
+    const s=steps[cur];
+    document.getElementById('gr-info').textContent=s.info;
+    document.getElementById('gr-counter').textContent=`단계 ${cur} / ${steps.length-1}`;
+    drawGantt(s);
+    // Table
+    const tbody=document.getElementById('gr-assign-body');
+    tbody.innerHTML='';
+    ['A','B','C','D','E','F'].forEach(k=>{
+      const a=s.assigned[k];
+      const predEnd=preds[k].length>0&&Object.keys(s.assigned).length>0?
+        Math.max(0,...preds[k].map(p=>s.assigned[p]?s.assigned[p].end:0)):0;
+      const cls=s.current===k?'hl-blue':a?'hl-green':'';
+      tbody.innerHTML+=`<tr>
+        <td class="${cls}" style="font-weight:700">${k}</td>
+        <td class="${cls}">${a?'R'+(a.room+1):'—'}</td>
+        <td class="${cls}">${a?a.start:'—'}</td>
+        <td class="${cls}">${a?a.end:'—'}</td>
+        <td class="${cls}">${a?predEnd:'—'}</td>
+      </tr>`;
+    });
+    document.getElementById('gr-prev').disabled=(cur===0);
+    document.getElementById('gr-next').disabled=(cur===steps.length-1);
+  }
+
+  function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}document.getElementById('gr-auto').textContent='⏵ 자동재생';}
+  document.getElementById('gr-prev').addEventListener('click',()=>{if(cur>0){cur--;render();}});
+  document.getElementById('gr-next').addEventListener('click',()=>{if(cur<steps.length-1){cur++;render();}});
+  document.getElementById('gr-auto').addEventListener('click',()=>{
+    if(autoTimer){stopAuto();return;}
+    document.getElementById('gr-auto').textContent='⏸ 일시정지';
+    autoTimer=setInterval(()=>{if(cur>=steps.length-1){stopAuto();return;}cur++;render();},1000);
+  });
+  document.getElementById('gr-reset').addEventListener('click',()=>{stopAuto();cur=0;render();});
+  render();
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION 4 — SA
+════════════════════════════════════════════════════════════ */
+(function(){
+  // Seeded LCG (mulberry32)
+  function mulberry32(seed){
+    return function(){
+      seed|=0;seed=seed+0x6D2B79F5|0;
+      let t=Math.imul(seed^seed>>>15,1|seed);
+      t=t+Math.imul(t^t>>>7,61|t)^t;
+      return((t^t>>>14)>>>0)/4294967296;
+    };
+  }
+  const rng=mulberry32(42);
+
+  // Small cost function: simulate scheduling 6 tasks on 2 rooms
+  // state = permutation of [0..5] (indices for A,B,C,D,E,F)
+  const taskNames=['A','B','C','D','E','F'];
+  const dur=[10,20,40,20,15,25];
+  const predIdx={0:[],1:[],2:[0],3:[1],4:[2,3],5:[4]};// same DAG
+
+  function computeCost(perm){
+    // decode: assign in perm order, 2 rooms, respect preds
+    const end=new Array(6).fill(0);
+    const roomFree=[0,0];
+    perm.forEach(i=>{
+      const predEnd=predIdx[i].length>0?Math.max(...predIdx[i].map(p=>end[p])):0;
+      const r=roomFree[0]<=roomFree[1]?0:1;
+      const s=Math.max(predEnd,roomFree[r]);
+      end[i]=s+dur[i];
+      roomFree[r]=end[i];
+    });
+    return Math.max(...roomFree);
+  }
+
+  // Generate SA steps
+  function buildSteps(){
+    const ITER=60;const T0=100;const alpha=0.92;
+    let T=T0;
+    let perm=[0,1,2,3,4,5];
+    let cost=computeCost(perm);
+    let best=cost;let bestPerm=[...perm];
+    const rng2=mulberry32(42);
+
+    const allSteps=[];
+    const costHistory=[cost];const bestHistory=[cost];const tempHistory=[T];
+
+    allSteps.push({
+      T,cost,best,iter:0,delta:null,accepted:null,worseAccepted:false,
+      perm:[...perm],
+      costHistory:[...costHistory],bestHistory:[...bestHistory],tempHistory:[...tempHistory],
+      logLine:null
+    });
+
+    for(let i=1;i<=ITER;i++){
+      T=T0*Math.pow(alpha,i);
+      // random swap
+      const a=Math.floor(rng2()*6),b=Math.floor(rng2()*6);
+      const newPerm=[...perm];[newPerm[a],newPerm[b]]=[newPerm[b],newPerm[a]];
+      const newCost=computeCost(newPerm);
+      const delta=newCost-cost;
+      let accepted=false,worseAccepted=false;
+      if(delta<0){
+        accepted=true;perm=newPerm;cost=newCost;
+      } else {
+        const p=Math.exp(-delta/T);
+        if(rng2()<p){accepted=true;worseAccepted=true;perm=newPerm;cost=newCost;}
+      }
+      if(cost<best){best=cost;bestPerm=[...perm];}
+      costHistory.push(cost);bestHistory.push(best);tempHistory.push(T);
+      const P=delta>0?Math.exp(-delta/T):1;
+      allSteps.push({
+        T:+T.toFixed(2),cost,best,iter:i,
+        delta,accepted,worseAccepted,
+        perm:[...perm],
+        costHistory:[...costHistory],bestHistory:[...bestHistory],tempHistory:[...tempHistory],
+        logLine:{iter:i,T:+T.toFixed(2),delta,accepted,worseAccepted,P:+P.toFixed(4),cost}
+      });
+    }
+    return allSteps;
+  }
+
+  const steps=buildSteps();
+  let cur=0;let autoTimer=null;
+  const chartCanvas=document.getElementById('sa-chart');
+  const tempCanvas=document.getElementById('sa-temp-chart');
+  const logDiv=document.getElementById('sa-log');
+  const logLines=[];
+
+  function drawCostChart(s){
+    const W=chartCanvas.width,H=chartCanvas.height;
+    const ctx=chartCanvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+    const mL=40,mT=14,mR=14,mB=28;
+    const data=s.costHistory;const best=s.bestHistory;
+    const n=data.length;
+    const totalN=steps[steps.length-1].costHistory.length;
+    const yMin=Math.min(...best)-2,yMax=Math.max(...data)+5;
+    const scX=(W-mL-mR)/(totalN-1||1);
+    const scY=(H-mT-mB)/(yMax-yMin||1);
+    // Grid
+    ctx.strokeStyle='#f1f5f9';ctx.lineWidth=1;
+    for(let y=80;y<=100;y+=5){
+      const py=H-mB-(y-yMin)*scY;
+      ctx.beginPath();ctx.moveTo(mL,py);ctx.lineTo(W-mR,py);ctx.stroke();
+      ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='right';
+      ctx.fillText(y,mL-3,py+3);
+    }
+    // Current cost line
+    if(n>1){
+      ctx.strokeStyle='#3b82f6';ctx.lineWidth=1.5;ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x=mL+i*scX,y=H-mB-(v-yMin)*scY;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });ctx.stroke();
+    }
+    // Best cost line
+    if(n>1){
+      ctx.strokeStyle='#16a34a';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.beginPath();
+      best.forEach((v,i)=>{
+        const x=mL+i*scX,y=H-mB-(v-yMin)*scY;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });ctx.stroke();ctx.setLineDash([]);
+    }
+    // Worse-accepted highlight dots
+    steps.slice(1,cur+1).forEach((st,idx)=>{
+      if(st.worseAccepted){
+        const i=idx+1;const v=st.cost;
+        const x=mL+i*scX,yp=H-mB-(v-yMin)*scY;
+        ctx.fillStyle='#fde047';ctx.beginPath();ctx.arc(x,yp,4,0,Math.PI*2);ctx.fill();
+      }
+    });
+    // Legend
+    ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillStyle='#3b82f6';ctx.fillRect(mL,4,14,3);ctx.fillStyle='#334155';ctx.fillText('현재 비용',mL+18,10);
+    ctx.fillStyle='#16a34a';ctx.fillRect(mL+80,4,14,3);ctx.fillStyle='#334155';ctx.fillText('최선 비용',mL+98,10);
+    ctx.fillStyle='#fde047';ctx.beginPath();ctx.arc(mL+174,6,4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#334155';ctx.fillText('나쁜해 수용',mL+182,10);
+    // Axes
+    ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(mL,mT);ctx.lineTo(mL,H-mB);ctx.lineTo(W-mR,H-mB);ctx.stroke();
+    ctx.fillStyle='#475569';ctx.font='9px sans-serif';ctx.textAlign='center';
+    ctx.fillText('반복',W/2,H);
+  }
+
+  function drawTempChart(s){
+    const W=tempCanvas.width,H=tempCanvas.height;
+    const ctx=tempCanvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+    const mL=40,mT=8,mR=14,mB=20;
+    const data=s.tempHistory;
+    const n=data.length;const totalN=steps[steps.length-1].tempHistory.length;
+    const yMin=0,yMax=Math.max(...data)+5;
+    const scX=(W-mL-mR)/(totalN-1||1);
+    const scY=(H-mT-mB)/(yMax||1);
+    if(n>1){
+      ctx.strokeStyle='#a855f7';ctx.lineWidth=2;ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x=mL+i*scX,y=H-mB-v*scY;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });ctx.stroke();
+    }
+    // Y labels
+    [0,50,100].forEach(v=>{
+      const py=H-mB-v*scY;
+      ctx.fillStyle='#94a3b8';ctx.font='8px sans-serif';ctx.textAlign='right';
+      ctx.fillText(v,mL-3,py+3);
+    });
+    ctx.fillStyle='#a855f7';ctx.font='9px sans-serif';ctx.textAlign='left';
+    ctx.fillText('온도(T)',mL+2,mT+8);
+    ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(mL,mT);ctx.lineTo(mL,H-mB);ctx.lineTo(W-mR,H-mB);ctx.stroke();
+  }
+
+  function render(){
+    const s=steps[cur];
+    let info;
+    if(cur===0){
+      info='SA 초기 상태: 초기 순열=[A,B,C,D,E,F], 비용='+s.cost+', T='+s.T;
+    } else {
+      const worseStr=s.worseAccepted?' ★ 나쁜 해가 수용되었습니다(고온 탈출)!':'';
+      info=`반복 ${s.iter}: T=${s.T.toFixed(1)}, Δ=${s.delta>=0?'+':''}${s.delta}, `+
+        `P=${s.delta>0?Math.exp(-s.delta/s.T).toFixed(3):'1.000'}, `+
+        `${s.accepted?'수용':'거부'}, 비용=${s.cost}, 최선=${s.best}${worseStr}`;
+    }
+    const infoEl=document.getElementById('sa-info');
+    infoEl.textContent=info;
+    infoEl.style.background=s.worseAccepted?'#fef9c3':s.accepted&&s.delta<0?'#f0fdf4':'#f0fdf4';
+    infoEl.style.borderColor=s.worseAccepted?'#fde047':s.accepted&&s.delta<0?'#bbf7d0':'#bbf7d0';
+    infoEl.style.color=s.worseAccepted?'#92400e':'#166534';
+    document.getElementById('sa-counter').textContent=`단계 ${cur} / ${steps.length-1}`;
+    drawCostChart(s);
+    drawTempChart(s);
+    // Log
+    if(s.logLine&&!logLines.find(l=>l.iter===s.logLine.iter)){
+      logLines.push(s.logLine);
+      const l=s.logLine;
+      const cls=l.worseAccepted?'worse-accept':l.accepted?'accept':'reject';
+      const span=document.createElement('div');
+      span.className=cls;
+      const pStr=l.delta>0?` P=${l.P}`:'';
+      const accStr=l.worseAccepted?'수용(나쁜해★)':l.accepted?'수용':'거부';
+      span.textContent=`#${l.iter} T=${l.T} Δ=${l.delta>=0?'+':''}${l.delta}${pStr} → ${accStr} 비용=${l.cost}`;
+      logDiv.appendChild(span);
+      logDiv.scrollTop=logDiv.scrollHeight;
+    }
+    document.getElementById('sa-prev').disabled=(cur===0);
+    document.getElementById('sa-next').disabled=(cur===steps.length-1);
+  }
+
+  function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}document.getElementById('sa-auto').textContent='⏵ 자동재생';}
+  document.getElementById('sa-prev').addEventListener('click',()=>{if(cur>0){cur--;render();}});
+  document.getElementById('sa-next').addEventListener('click',()=>{if(cur<steps.length-1){cur++;render();}});
+  document.getElementById('sa-auto').addEventListener('click',()=>{
+    if(autoTimer){stopAuto();return;}
+    document.getElementById('sa-auto').textContent='⏸ 일시정지';
+    autoTimer=setInterval(()=>{if(cur>=steps.length-1){stopAuto();return;}cur++;render();},200);
+  });
+  document.getElementById('sa-reset').addEventListener('click',()=>{
+    stopAuto();cur=0;logLines.length=0;logDiv.innerHTML='';render();
+  });
+  render();
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION 5 — GA
+════════════════════════════════════════════════════════════ */
+(function(){
+  function mulberry32(seed){
+    return function(){
+      seed|=0;seed=seed+0x6D2B79F5|0;
+      let t=Math.imul(seed^seed>>>15,1|seed);
+      t=t+Math.imul(t^t>>>7,61|t)^t;
+      return((t^t>>>14)>>>0)/4294967296;
+    };
+  }
+  const rng=mulberry32(7);
+
+  const GENES=['A','B','C','D','E','F'];
+  const N=6;
+
+  // OX Crossover demo — fixed parents and cut points
+  const P1=['A','C','E','B','D','F'];
+  const P2=['B','D','A','F','C','E'];
+  const CUT1=1,CUT2=3;// segment indices 1,2,3 (inclusive)
+
+  // Build OX steps: total = N + 2 (init + copy segment + fill each remaining)
+  // Phase 1: show parents + cut points (step 0)
+  // Phase 2: copy segment from P1 to child (step 1)
+  // Phase 3: fill remaining N-segment_len positions from P2 in order (one per step)
+  // Phase 4: final explain step
+
+  function buildOXSteps(){
+    const steps=[];
+    const segLen=CUT2-CUT1+1;// 3
+    const child=new Array(N).fill(null);
+    // step 0: show parents
+    steps.push({phase:'init',child:[...child],fillPos:-1,p2Pos:-1});
+    // step 1: copy segment
+    for(let i=CUT1;i<=CUT2;i++)child[i]=P1[i];
+    steps.push({phase:'copied',child:[...child],fillPos:-1,p2Pos:-1});
+    // step 2...: fill from P2
+    const segSet=new Set(child.filter(x=>x!==null));
+    const remaining=[];
+    // order: start from CUT2+1 in P2, wrap around
+    for(let k=0;k<N;k++){
+      const idx=(CUT2+1+k)%N;
+      if(!segSet.has(P2[idx]))remaining.push(P2[idx]);
+    }
+    let fillIdx=0;
+    for(let pos=0;pos<N;pos++){
+      const target=(CUT2+1+pos)%N;
+      if(child[target]!==null)continue;
+      child[target]=remaining[fillIdx];
+      steps.push({phase:'filling',child:[...child],fillPos:target,p2Pos:null,filled:remaining[fillIdx]});
+      fillIdx++;
+    }
+    steps.push({phase:'done',child:[...child],fillPos:-1,p2Pos:-1});
+    return steps;
+  }
+
+  // Simulated GA fitness curve (seeded, 25 generations)
+  function buildGACurve(){
+    const GEN=25;
+    const rng2=mulberry32(7);
+    let best=100;
+    const bestPerGen=[best];
+    for(let g=1;g<=GEN;g++){
+      const improvement=(rng2()<0.55?rng2()*3:0);
+      best=Math.max(85,best-improvement);
+      bestPerGen.push(+best.toFixed(1));
+    }
+    return bestPerGen;
+  }
+
+  const oxSteps=buildOXSteps();
+  const gaCurve=buildGACurve();
+  const TOTAL_STEPS=Math.max(oxSteps.length,gaCurve.length);
+  let cur=0;let autoTimer=null;
+  const chartCanvas=document.getElementById('ga-chart');
+
+  function drawGAChart(genIdx){
+    const W=chartCanvas.width,H=chartCanvas.height;
+    const ctx=chartCanvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+    const mL=42,mT=14,mR=14,mB=28;
+    const data=gaCurve.slice(0,genIdx+1);
+    const totalN=gaCurve.length;
+    const yMin=82,yMax=102;
+    const scX=(W-mL-mR)/(totalN-1||1);
+    const scY=(H-mT-mB)/(yMax-yMin);
+    // Grid
+    ctx.strokeStyle='#f1f5f9';ctx.lineWidth=1;
+    [85,90,95,100].forEach(v=>{
+      const py=H-mB-(v-yMin)*scY;
+      ctx.beginPath();ctx.moveTo(mL,py);ctx.lineTo(W-mR,py);ctx.stroke();
+      ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='right';ctx.fillText(v,mL-3,py+3);
+    });
+    if(data.length>1){
+      ctx.strokeStyle='#16a34a';ctx.lineWidth=2;ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x=mL+i*scX,y=H-mB-(v-yMin)*scY;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });ctx.stroke();
+      // dots
+      data.forEach((v,i)=>{
+        const x=mL+i*scX,y=H-mB-(v-yMin)*scY;
+        ctx.fillStyle='#16a34a';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
+      });
+    }
+    // Axes
+    ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(mL,mT);ctx.lineTo(mL,H-mB);ctx.lineTo(W-mR,H-mB);ctx.stroke();
+    ctx.fillStyle='#475569';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('세대',W/2,H);
+    ctx.fillStyle='#16a34a';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('최고 적합도(비용)',mL+4,mT+10);
+    // Current gen label
+    if(data.length>0){
+      const last=data[data.length-1];
+      ctx.fillStyle='#0f172a';ctx.font='bold 11px sans-serif';ctx.textAlign='left';
+      ctx.fillText(`세대 ${data.length-1}: ${last}`,mL+4,mT+22);
+    }
+    // Gen axis labels
+    [0,5,10,15,20,25].forEach(v=>{
+      const x=mL+v*scX;
+      ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='center';
+      ctx.fillText(v,x,H-mB+12);
+    });
+  }
+
+  function renderOX(oxIdx){
+    const s=oxSteps[Math.min(oxIdx,oxSteps.length-1)];
+    // P1
+    const p1El=document.getElementById('ox-p1');p1El.innerHTML='';
+    P1.forEach((g,i)=>{
+      const d=document.createElement('div');d.className='ox-cell';
+      if(i>=CUT1&&i<=CUT2)d.classList.add('seg');
+      d.textContent=g;p1El.appendChild(d);
+    });
+    // P2
+    const p2El=document.getElementById('ox-p2');p2El.innerHTML='';
+    P2.forEach((g,i)=>{
+      const d=document.createElement('div');d.className='ox-cell';
+      d.textContent=g;p2El.appendChild(d);
+    });
+    // Child
+    const childEl=document.getElementById('ox-child');childEl.innerHTML='';
+    s.child.forEach((g,i)=>{
+      const d=document.createElement('div');d.className='ox-cell';
+      if(g!==null){
+        if(i>=CUT1&&i<=CUT2)d.classList.add('seg');
+        else d.classList.add('filled');
+        d.textContent=g;
+      } else {
+        d.textContent='?';d.style.color='#cbd5e1';
+      }
+      if(i===s.fillPos)d.classList.add('cursor');
+      childEl.appendChild(d);
+    });
+    // Explain
+    const ex=document.getElementById('ox-explain');
+    if(s.phase==='init')ex.textContent='파란 칸(인덱스 1–3)이 복사될 구간입니다.';
+    else if(s.phase==='copied')ex.textContent=`Parent1의 구간 [${P1.slice(CUT1,CUT2+1).join(',')}]을 Child에 복사했습니다.`;
+    else if(s.phase==='filling')ex.textContent=`Parent2 순서대로 "${s.filled}"을 빈 위치에 채웁니다.`;
+    else ex.textContent=`완성! Child: [${s.child.join(',')}] — 순열 유효성 보장.`;
+  }
+
+  function render(){
+    const oxIdx=Math.min(cur,oxSteps.length-1);
+    const genIdx=Math.min(cur,gaCurve.length-1);
+    drawGAChart(genIdx);
+    renderOX(oxIdx);
+    document.getElementById('ga-counter').textContent=`단계 ${cur} / ${TOTAL_STEPS-1}`;
+    // Info
+    const genInfo=cur<gaCurve.length?`세대 ${cur}: 최고 비용=${gaCurve[cur]}`:'세대 완료';
+    const oxInfo=oxIdx<oxSteps.length?document.getElementById('ox-explain').textContent:'OX 완료';
+    document.getElementById('ga-info').textContent=`${genInfo} | OX: ${oxInfo}`;
+    document.getElementById('ga-prev').disabled=(cur===0);
+    document.getElementById('ga-next').disabled=(cur===TOTAL_STEPS-1);
+  }
+
+  function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}document.getElementById('ga-auto').textContent='⏵ 자동재생';}
+  document.getElementById('ga-prev').addEventListener('click',()=>{if(cur>0){cur--;render();}});
+  document.getElementById('ga-next').addEventListener('click',()=>{if(cur<TOTAL_STEPS-1){cur++;render();}});
+  document.getElementById('ga-auto').addEventListener('click',()=>{
+    if(autoTimer){stopAuto();return;}
+    document.getElementById('ga-auto').textContent='⏸ 일시정지';
+    autoTimer=setInterval(()=>{if(cur>=TOTAL_STEPS-1){stopAuto();return;}cur++;render();},600);
+  });
+  document.getElementById('ga-reset').addEventListener('click',()=>{stopAuto();cur=0;render();});
+  render();
+})();
+</script>
+</body>
+</html>

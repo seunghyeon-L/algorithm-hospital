@@ -1,0 +1,19 @@
+# 의존성 / 빌드 산출물 (이미지 빌드 시 새로 생성)
+**/node_modules/
+**/.next/
+**/out/
+/frontend_static/
+
+# python
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+
+# OMC 내부 상태(임시)
+/.omc/state/
+/.omc/handoffs/
+
+# 백업·로그
+*.bak.html
+*.log
+.DS_Store
