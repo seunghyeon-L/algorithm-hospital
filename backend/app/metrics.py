@@ -175,14 +175,16 @@ def evaluate(
     for task_id, asgn in schedule.assignments.items():
         task = instance.tasks[task_id]
 
-        # ready = max predecessor finish (precedence-only, no resource)
+        # ready = max(release_time, max predecessor finish) — precedence-only
+        ready_time = task.release_time
         if task.predecessors:
             ready_time = max(
-                schedule.assignments[pred_id].end
-                for pred_id in task.predecessors
+                ready_time,
+                max(
+                    schedule.assignments[pred_id].end
+                    for pred_id in task.predecessors
+                ),
             )
-        else:
-            ready_time = 0
 
         wait_time = asgn.start - ready_time
         total_wait += wait_time

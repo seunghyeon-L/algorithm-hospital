@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>근거자료 — 왜 목적함수는 "환자 대기시간"인가</title>
+<style>
+  :root{
+    --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --card:#ffffff;
+    --blue:#2563eb; --bluebg:#eff6ff; --teal:#0d9488; --tealbg:#f0fdfa;
+    --red:#dc2626; --redbg:#fef2f2; --amber:#d97706; --amberbg:#fffbeb;
+    --violet:#7c3aed; --violetbg:#f5f3ff; --green:#16a34a; --greenbg:#f0fdf4;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","맑은 고딕",sans-serif;
+    line-height:1.7;font-size:16px;}
+  .wrap{max-width:940px;margin:0 auto;padding:32px 20px 80px;}
+  header.top{text-align:center;padding:28px 0 10px;border-bottom:2px solid var(--line);margin-bottom:10px;}
+  header.top h1{font-size:28px;margin:0 0 8px;letter-spacing:-.5px;}
+  header.top p{color:var(--muted);margin:4px 0;font-size:15px;}
+  h2.sec{font-size:22px;margin:46px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line);}
+  p{margin:8px 0;}
+  .lead{color:var(--muted);font-size:15.5px;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{background:#f1f5f9;font-weight:600;}
+  tr:last-child td{border-bottom:none;}
+  .num{font-variant-numeric:tabular-nums;font-weight:600;}
+  a{color:var(--blue);}
+  .chain{background:var(--card);border:2px solid var(--blue);border-radius:14px;padding:18px 24px;margin:18px 0;}
+  .chain ol{margin:8px 0;padding-left:24px;}
+  .chain li{margin:7px 0;}
+  .chain .qed{font-weight:700;font-size:17px;color:var(--blue);margin-top:10px;}
+  .badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;vertical-align:1px;}
+  .b-ok{background:var(--greenbg);color:#15803d;border:1px solid #bbf7d0;}
+  .b-part{background:var(--amberbg);color:#92400e;border:1px solid #fde68a;}
+  .b-meta{background:var(--violetbg);color:#6d28d9;border:1px solid #ddd6fe;}
+  .callout{border-radius:10px;padding:12px 16px;margin:12px 0;font-size:14.5px;}
+  .c-key{background:var(--bluebg);border:1px solid #bfdbfe;}
+  .c-warn{background:var(--redbg);border:1px solid #fecaca;}
+  .c-note{background:#f8fafc;border:1px solid var(--line);}
+  .mini{font-size:13.5px;color:var(--muted);}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;}
+  .secicon{font-size:20px;margin-right:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>왜 목적함수는 "환자 대기시간"인가 — 수치 근거 모음</h1>
+  <p>병원 수술 스케줄링 프로젝트(제주대학교병원 케이스) · 목적함수 선정 근거 자료집</p>
+  <p class="mini">6개 각도 조사 · 핵심 12건은 원문 대조 검증(확인 6 · 부분확인 5 · 탈락 1 제외) · 2026-06</p>
+</header>
+
+<!-- 논리 체인 -->
+<h2 class="sec">🎯 한눈에 — 발표용 논리 체인</h2>
+<div class="chain">
+  <ol>
+    <li><b>의료진은 한정돼 있다.</b> 한국 의사 수 OECD 최하위권(인구 1천명당 2.7명), 제주대병원은 의사 충원율 53.4%(정원 337 vs 현원 180).</li>
+    <li><b>자원이 고정·희소하면 대기는 비선형으로 폭증한다.</b> 큐잉이론: 대기 L<sub>q</sub> = ρ²/(1−ρ) — 가동률 ρ가 1에 다가가면 발산. ρ=0.5→0.5명, ρ=0.9→8.1명, ρ=0.95→18명.</li>
+    <li><b>실제로 제주에서 그 일이 벌어졌다.</b> 응급실 도착→초진 43.3분(전국의 2.6배), 의사가 줄자 전국 대장암 수술 대기 30→52일·합병증 12→28.2%.</li>
+    <li><b>대기는 불만의 1차 원인이고</b>(만족 OR 0.18, 이탈 사유 1위 76.7%), <b>나아가 생명의 문제다</b>(암 수술 4주 지연마다 사망위험 +6~8%).</li>
+    <li><b>그런데 자원을 안 늘려도 스케줄링만으로 대기를 37~50% 줄인 실증이 있다.</b></li>
+  </ol>
+  <div class="qed">∴ 자원을 늘릴 수 없는 제주대병원에서, 일정이 바꿀 수 있는 핵심 가치 = 환자 대기시간. 그래서 목적함수는 Σwait.</div>
+</div>
+
+<!-- ① 만족도 -->
+<h2 class="sec"><span class="secicon">😤</span>① 대기 ↓ = 불만 ↓ (만족도 근거 · 원문 대조 검증됨)</h2>
+<p class="lead">상관(길수록 나쁨)과 인과(줄이면 좋아짐) 양방향 모두 수치로 성립한다.</p>
+<table>
+  <tr><th>연구</th><th>핵심 수치</th><th>검증</th></tr>
+  <tr><td><b>메타분석</b> 13개 연구·25,017명 — <a href="https://thejhpm.com/index.php/thejhpm/article/view/516" target="_blank">J Health Policy Mgmt 2024</a> <span class="badge b-meta">메타분석</span></td>
+      <td>긴 대기 환자의 만족 확률 = 짧은 대기의 <b class="num">0.18배</b> (OR 0.18, 95% CI 0.06–0.49, p&lt;0.001)</td><td><span class="badge b-ok">확인</span></td></tr>
+  <tr><td>정형외과 외래 4,216건 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6959917/" target="_blank">JBJS Open Access 2019</a></td>
+      <td>대기 <b>15분만 넘어도</b> 만족 OR <b class="num">0.36</b>(0.31–0.43), 길수록 계속 하락 (Press Ganey)</td><td><span class="badge b-ok">확인</span></td></tr>
+  <tr><td>캐나다 응급실 4곳, n=766 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11963722/" target="_blank">2025</a></td>
+      <td>60분 초과 대기 → 만족 확률 <b class="num">67%↓</b> · 4시간 초과 → <b class="num">50배↓</b></td><td><span class="badge b-ok">확인</span></td></tr>
+  <tr><td><b>개입 연구</b>: Cambridge Hospital ED — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4009311/" target="_blank">2014</a></td>
+      <td>의사 대면 <b class="num">63→18분</b>(−71%) ⇒ 만족도 <b class="num">12→59 퍼센타일</b>, 무진료 이탈 <b class="num">4.1→0.9%</b></td><td><span class="badge b-ok">확인</span></td></tr>
+  <tr><td>ED 패스트트랙 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4307722/" target="_blank">West J Emerg Med 2015</a></td>
+      <td>대기 만족 <b class="num">68→88%</b>(OR 4.13), 이탈률 4.1→0.9%</td><td><span class="badge b-part">부분확인</span></td></tr>
+  <tr><td>이탈리아 ED 회귀분석 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7216114/" target="_blank">2020</a></td>
+      <td>대기 1단위↑당 만족도 <b class="num">B=−0.65</b>(p=0.007), 모델 R²=0.56</td><td><span class="badge b-ok">확인</span></td></tr>
+  <tr><td>한국 의료서비스경험조사 5년 추세 — <a href="https://medicalworldnews.co.kr/m/view.php?idx=1510948105" target="_blank">KIHASA 2022</a></td>
+      <td>대기 단축(외래 −6.2분·입원 −3.7일)과 함께 보건의료제도 만족 <b class="num">61.5→68.9%</b></td><td><span class="badge b-part">부분확인</span></td></tr>
+</table>
+<p class="mini">※ 검증 과정에서 일부 주장(미국 LWBS 업계 통계 1건)은 출처 부정확으로 <b>탈락 처리</b>했고, "당일진료 8.2%p" 항목은 출처 귀속 오류로 제외했다. 남긴 수치는 모두 원문 확인.</p>
+
+<!-- ② 임상 -->
+<h2 class="sec"><span class="secicon">🫀</span>② 대기는 생명의 문제 (임상 결과 악화 근거)</h2>
+<table>
+  <tr><th>근거</th><th>핵심 수치</th></tr>
+  <tr><td><b>암 치료 지연 메타분석</b>, 127만 명 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7610021/" target="_blank">Hanna et al., BMJ 2020;371:m4087</a> <span class="badge b-meta">메타분석</span></td>
+      <td>수술 <b>4주 지연마다 사망위험 6~8% 증가</b> (유방암 HR 1.08 · 대장 1.06 · 두경부 1.06); 보조화학요법 지연 시 9~28%↑</td></tr>
+  <tr><td>대장암 수술 지연 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8251304/" target="_blank">Colorectal Dis 2021</a></td>
+      <td>1개월 지연 HR 1.13 → <b>3개월 지연 HR 1.57</b> (NNH=10)</td></tr>
+  <tr><td><b>고관절골절</b> 191,873명 메타분석 — <a href="https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0046175" target="_blank">PLOS ONE 2012</a></td>
+      <td>48시간 내 수술 시 사망위험 <b class="num">26%↓</b> (OR 0.74); 12시간 초과 지연 시 30일 사망 OR 1.43 (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11377486/" target="_blank">2024</a>)</td></tr>
+  <tr><td>응급·긴급 수술 지연 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5505757/" target="_blank">CMAJ 2017</a></td>
+      <td>수술실 접근 지연 시 원내 사망 <b>OR 1.56</b> (4.9% vs 3.2%) + 재원 1.1일·비용 추가</td></tr>
+  <tr><td>STEMI 재관류 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7448494/" target="_blank">BMC Emerg Med 2020</a>, 71,099명</td>
+      <td>120분 내 재관류 시 사망률 <b class="num">31%↓</b> (OR 0.69)</td></tr>
+</table>
+
+<!-- ③ 한국 -->
+<h2 class="sec"><span class="secicon">🇰🇷</span>③ 한국 현실 — "한정된 의료진 + 많은 환자"의 결과</h2>
+<table>
+  <tr><th>사실</th><th>수치</th><th>출처</th></tr>
+  <tr><td><b>의정갈등 자연실험</b>: 의사 줄자 대기·결과 동시 악화</td>
+      <td>대장암 진단→수술 중앙값 <b class="num">30일→52일</b>, 수술 후 합병증 <b class="num">12.0%→28.2%</b>(2배), 수술 시행률 63.5→39.5%</td>
+      <td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12887129/" target="_blank">J Yeungnam Med Sci 2026</a></td></tr>
+  <tr><td>입원 대기 역대 최장</td><td>평균 <b class="num">17.5일</b>(2024, 전년 13.6일) · 10일 이상 대기 69.2%</td>
+      <td><a href="https://www.mohw.go.kr/board.es?mid=a10411010100&bid=0019&act=view&list_no=1485158" target="_blank">2024 의료서비스경험조사(복지부)</a></td></tr>
+  <tr><td>응급실 재이송("뺑뺑이") 증가</td><td><b class="num">4,227건(2023) → 5,657건(2024, +34%)</b>; 중증환자 응급실 평균 대기 6.7시간 정체</td>
+      <td><a href="https://www.hankookilbo.com/News/Read/A2024091012310003913" target="_blank">한국일보 2024</a> · <a href="https://www.k-health.com/news/articleView.html?idxno=69456" target="_blank">헬스경향</a></td></tr>
+  <tr><td>암 수술 대기 30일 초과</td><td>폐암 <b class="num">20.4%</b> · 간암 11.4% · 대장암 11.4%; 30일 내 수술률 소득격차 <b>36.2%p</b>(57.2 vs 93.4%)</td>
+      <td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12869139/" target="_blank">PMC 2025</a></td></tr>
+  <tr><td>의사 공급 OECD 최하위권</td><td>임상의사 <b class="num">2.7명/1천명</b>(OECD 평균 3.86) · 의대 졸업자 7.4/10만(평균 14.3)</td>
+      <td><a href="https://www.koreabiomed.com/news/articleView.html?idxno=28419" target="_blank">OECD 2023 / KBR</a></td></tr>
+  <tr><td>빅5 쏠림(지방 환자 유출)</td><td>서울 상급종합 찾은 지방 환자 중 <b class="num">77.1%</b>가 빅5 집중</td>
+      <td><a href="https://www.seoul.co.kr/news/society/health-medical/2024/09/10/20240910006004" target="_blank">서울신문 2024</a></td></tr>
+</table>
+
+<!-- ④ 제주 -->
+<h2 class="sec"><span class="secicon">🏝️</span>④ 제주·제주대학교병원 — 우리 케이스의 직접 증거</h2>
+<div class="callout c-key"><b>핵심 발견:</b> 제주대병원 <b>수술실은 평시 12개</b> — 2024 의정갈등 때 인력 부족으로 <b>12→8개로 축소 운영</b>했다는 보도로 확인. 우리 모델의 <code>room=12</code>(평시·2026 공공DB 등록값)는 추정이 아닌 보도 확인값이며, <b>위기 시나리오는 <code>room=8</code></b>(2024 축소 재현).</div>
+<table>
+  <tr><th>사실</th><th>수치</th><th>출처</th></tr>
+  <tr><td><b>수술실·중환자실 축소</b></td><td>수술실 <b class="num">12→8개</b>(−33%) · 내과계 중환자실 20→12병상(−40%) · 교수 153명 중 10여 명 사직서</td>
+      <td><a href="https://www.jejusori.net/news/articleView.html?idxno=426231" target="_blank">제주의소리 2024</a></td></tr>
+  <tr><td>수술량 반토막</td><td>하루 평균 <b class="num">50건 → 25건 미만</b> · 병상가동률 68%→30%대 · 전공의 95명 중 73명(76.8%) 사직</td>
+      <td><a href="https://www.jejunews.com/news/articleView.html?idxno=2213394" target="_blank">제주일보 2024</a></td></tr>
+  <tr><td><b>응급실 초진 대기 전국 2.6배</b></td><td>도착→초진 <b class="num">43.3분</b>(2023; 전국 16.4분) · 2024년 20.8분으로 개선됐으나 여전히 초과</td>
+      <td><a href="https://www.jibs.co.kr/news/articles/articlesDetail/52020" target="_blank">JIBS 2024</a></td></tr>
+  <tr><td>의사 충원율 절반</td><td>정원 337명 vs 현원 <b class="num">180명(53.4%)</b> · 전공의 141 정원 중 15명 · 흉부외과/성형외과 전문의 각 1명</td>
+      <td><a href="https://www.jejusori.net/news/articleView.html?idxno=434235" target="_blank">제주의소리 2025</a> · 병원 의료진 페이지</td></tr>
+  <tr><td>전공의 공백</td><td>전공의 정원 141명 중 <b class="num">15명</b> 근무 · 레지던트 1년차 33명 모집에 지원 4명(작년 하반기 0명)</td>
+      <td><a href="https://www.jejusori.net/news/articleView.html?idxno=434235" target="_blank">제주의소리 2025</a></td></tr>
+  <tr><td><b>도외 원정진료</b>(지역 의료공백의 배경)</td><td>연 <b class="num">14만 5,054명 · 진료비 2,448억 원</b>(2024) — 항공·숙박 포함 시 3,000억+ 추산. <span style="font-size:12px;color:#64748b">※ 도민 전체 수치로, 제주대 한 곳의 수술 대기로 직접 환산되는 값은 아님 — 배경 근거로만 사용</span></td>
+      <td><a href="https://www.seoul.co.kr/news/society/health-medical/2026/04/14/20260414500082" target="_blank">서울신문 2026</a></td></tr>
+  <tr><td>경영난(자원 증설 불가)</td><td>2023년 적자 334억 · 2024년 311억 · 655병상(지방 국립대 평균의 67%) · 상급종합 미지정</td>
+      <td><a href="https://m.ihalla.com/article.php?aid=1739868626768429121" target="_blank">한라일보</a> · 복지부</td></tr>
+</table>
+<div class="callout c-warn"><b>해석:</b> 의료진을 못 늘리는(충원율 53%) 병원에서 수술이 반토막 나고 응급 초진이 전국 2.6배로 길어진 — "자원 고정"이 가정이 아니라 현실인 곳. 도외 원정진료(2,400억+)는 지역 의료공백의 배경이며, 일정 최적화는 자원을 늘리지 않고 쓸 수 있는 사실상 유일한 단기 개선 수단이다.</div>
+
+<!-- ⑤ 큐잉 -->
+<h2 class="sec"><span class="secicon">📈</span>⑤ 이론적 토대 — 한정 자원 + 수요 증가 = 대기 비선형 폭증 (큐잉이론)</h2>
+<table>
+  <tr><th>근거</th><th>핵심 수치/원리</th></tr>
+  <tr><td><b>M/M/1 대기행렬 공식</b> (Kleinrock 1975)</td>
+      <td>평균 대기 인원 L<sub>q</sub> = ρ²/(1−ρ): 가동률 ρ=0.5→<b class="num">0.5명</b>, 0.8→3.2, 0.9→<b class="num">8.1</b>, 0.95→<b class="num">18명</b> — ρ→1에서 발산(쌍곡선)</td></tr>
+  <tr><td>Kingman VUT 공식 (1961)</td><td>일반 큐에서도 E(W<sub>q</sub>) ∝ ρ/(1−ρ) × 변동성 — 변동이 클수록 같은 가동률에서 대기 더 김</td></tr>
+  <tr><td><b>수술실 실증</b> — <a href="https://pubmed.ncbi.nlm.nih.gov/12651670/" target="_blank">Tyler et al., Anesth Analg 2003</a></td>
+      <td>케이스 지연 없이 달성 가능한 수술실 가동률 상한 = <b class="num">85~90%</b>; 초과 시 환자 지연·초과근무 발생</td></tr>
+  <tr><td>ICU 실증 — <a href="https://pubmed.ncbi.nlm.nih.gov/15114227/" target="_blank">McManus et al., Anesthesiology 2004</a></td>
+      <td>가동률 80~85% 초과 시 수용 거부 <b>지수적 증가</b>; 큐잉 모델 예측 vs 실측 상관 r=0.89</td></tr>
+  <tr><td><b>소폭 개선의 큰 효과</b> — <a href="https://pubmed.ncbi.nlm.nih.gov/12786644/" target="_blank">Dunn, Emerg Med 2003</a></td>
+      <td>병상 가동률 <b class="num">5.9%p↓</b>(94.9→89.0%)만으로 응급실 대기 <b class="num">21.4분↓</b>(58.5→37.1분, p&lt;0.001)</td></tr>
+  <tr><td>NHS 117개 병원 — <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9112248/" target="_blank">Eur J Health Econ 2023</a></td>
+      <td>가동률 5%p↑ → 전체 사망률 +1.1%(연 ~685명), 수술 사망률 +3.1%</td></tr>
+</table>
+<p class="mini">함의: 자원이 빡빡할수록(ρ 높음) 같은 스케줄링 개선이 만들어내는 대기 감소 폭이 비선형적으로 커진다 — 제주대병원처럼 자원이 희소한 곳일수록 우리 프로젝트의 가치가 크다.</p>
+
+<!-- ⑥ 스케줄링 효과 -->
+<h2 class="sec"><span class="secicon">🗓️</span>⑥ 스케줄링 최적화가 실제로 대기를 줄인 실증</h2>
+<table>
+  <tr><th>개입</th><th>효과</th><th>출처</th></tr>
+  <tr><td>수술 예약·일정 다중개입 최적화</td><td>선택수술 대기 당일수술 <b class="num">198→100일(−50%)</b> · 일반수술 213→134일(−37%), p&lt;0.01</td>
+      <td><a href="https://pubmed.ncbi.nlm.nih.gov/35060992/" target="_blank">PubMed 2022</a></td></tr>
+  <tr><td>수술 일정 재설계(응급/예정 분리)</td><td>수술 취소·연기 <b class="num">99% 감소</b>(연간 771→7건)</td>
+      <td><a href="https://www.heraldopenaccess.us/openaccess/redesigning-the-surgical-schedule-to-enhance-productivity-in-the-operating-room" target="_blank">2018</a></td></tr>
+  <tr><td>스케줄링 휴리스틱(상·하류 자원 고려)</td><td>수술실 가동률 <b class="num">+37.2%</b> · 일일 수술 13→17.5건</td>
+      <td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7379827/" target="_blank">PMC 2020</a></td></tr>
+  <tr><td>수술 전 평가 시점 개선만으로</td><td>당일 연기율 <b class="num">6.1→3.0%(−50%)</b>, 병상 낭비 66%↓</td>
+      <td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12597126/" target="_blank">PMC 2025</a></td></tr>
+  <tr><td>TAVI 대기 10주 단축(시뮬레이션)</td><td>대기 중 사망률 <b class="num">4.6→2.7%</b> · 입원율 36→21%</td>
+      <td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11930346/" target="_blank">PMC 2025</a></td></tr>
+  <tr><td>순서 정책만 변경(Shortest-First vs FIFO)</td><td>주간 연기 <b class="num">36~43% 감소</b> (12,946건 시뮬레이션)</td>
+      <td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7992985/" target="_blank">PMC 2021</a></td></tr>
+</table>
+<div class="callout c-note"><b>우리 프로젝트와의 연결:</b> 우리 실험에서도 같은 자원으로 baseline 대비 CP-SAT가 총 대기를 <b>−63~64%</b>(756→281, n=20 인스턴스) 줄였다 — 위 문헌 효과(37~50%)와 같은 방향, 우리 비교의 현실성을 뒷받침.</div>
+
+<div class="foot">
+  <p>작성: 2026-06 · 수집 70건 중 신뢰도 높은 근거만 수록. ①번 표의 핵심 주장 12건은 별도 검증 에이전트가 원문을 다시 열어 대조함(확인/부분확인 표기). 부분확인 = 수치는 맞으나 맥락 단서 있음.</p>
+  <p>관련 문서: 논문정리_수술스케줄링_5편비교.html (알고리즘 비교 논문 5편 상세)</p>
+</div>
+
+</div>
+</body>
+</html>

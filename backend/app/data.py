@@ -15,6 +15,7 @@ PSPLIB parser:
 
 from __future__ import annotations
 
+import math
 import random
 import re
 from pathlib import Path
@@ -124,6 +125,239 @@ def generate_instance(
         instance_id=f"synth-seed{seed}-n{n_tasks}",
         tasks=tasks,
         resource_capacities={"room": n_rooms, "staff": n_staff},
+        seed=seed,
+        source="synthetic",
+        turnover=turnover,
+    )
+    instance.validate()
+    return instance
+
+
+# ---------------------------------------------------------------------------
+# JNUH (제주대학교병원) surgical-department instance generator
+# ---------------------------------------------------------------------------
+# Models the central operating suite (중앙수술부) of Jeju National University
+# Hospital, surgical departments only.  Resource constants are sourced from
+# the project research notes (.omc/ultragoal/notes/G1-research.md):
+#   - room: 12 operating rooms (8 in crisis mode) — estimate: manual tally
+#     from hospital website (2026.6), not press-verified; no primary source
+#   - anesthesia: 8 anesthesiologists — estimate: concurrency upper-bound
+#     assumption, no primary source (추정값: 동시수술 상한 가정, 1차 출처 미확보)
+#   - per-department surgeon counts — estimate: manual tally from hospital
+#     website (2026.6), not press-verified
+# Surgery durations are drawn from lognormal distributions whose mean/SD come
+# from published per-procedure / per-department operative-time studies
+# (appendectomy 58±21, TKA 92±37, craniotomy ~169, dept means: ortho 152±92,
+# general 151±98, neuro 135±92, uro 94±77, obgy 79±79 — see G1 notes).
+# Per-type numbers below interpolate those sources; they are estimates, not
+# hospital records.
+#
+# Each patient is a 3-task chain (exam -> surgery -> recovery), so Σwait keeps
+# its PINNED meaning: start(task) - max(end of predecessors).
+#
+# The "room" key MUST stay literally "room": baseline.py/rcpsp.py hard-code it
+# for turnover handling.  The dedicated-block variant therefore keeps
+# room:12 and *adds* per-department "orblock_*" resources on top (their
+# capacities sum to 12), which enforces departmental block limits without
+# touching any algorithm code.
+
+_JNUH_SURGEONS: Dict[str, int] = {
+    "surg_gs": 11,   # 외과 (general surgery)
+    "surg_os": 8,    # 정형외과 (orthopedics)
+    "surg_obgy": 6,  # 산부인과
+    "surg_oph": 6,   # 안과
+    "surg_ns": 5,    # 신경외과
+    "surg_ent": 5,   # 이비인후과
+    "surg_uro": 4,   # 비뇨의학과
+    "surg_cs": 1,    # 흉부외과 — scarce: hard local bottleneck
+    "surg_ps": 1,    # 성형외과 — scarce: hard local bottleneck
+}
+
+# Realistic case-mix weights (NOT proportional to surgeon counts; cap=1
+# departments get only a trickle so they act as local bottlenecks without
+# trivialising the instance).
+_JNUH_CASE_MIX: List[Tuple[str, float]] = [
+    ("surg_gs", 0.24),
+    ("surg_os", 0.20),
+    ("surg_obgy", 0.12),
+    ("surg_oph", 0.12),
+    ("surg_ent", 0.10),
+    ("surg_ns", 0.10),
+    ("surg_uro", 0.08),
+    ("surg_cs", 0.02),
+    ("surg_ps", 0.02),
+]
+
+# Per-department surgery types: (label, mean_min, sd_min, staff_demand, priority_weight)
+#
+# Priority weight maps clinical urgency to a scheduling weight for the
+# weighted_wait reporting metric (Σ wᵢ·waitᵢ).  It is a REPORTING METRIC
+# ONLY — the optimisation objective (Σwait, unweighted) is NOT changed.
+#
+# Mapping rationale (based on KTAS / surgical triage conventions):
+#   weight 10 — emergency: life-threatening if delayed hours
+#                (cardiac bypass, emergent neurosurgery, ruptured-appendix)
+#   weight  3 — urgent: deterioration likely within days if delayed
+#                (most general-surgery cases, hip fracture repair, thoracic)
+#   weight  1 — elective: stable; delay of days acceptable
+#                (cataract, elective TKA, ENT procedures, plastics)
+#
+# Within each department, different procedure types may have different weights.
+_JNUH_SURGERY_TYPES: Dict[str, List[Tuple[str, int, int, int, int]]] = {
+    #                         label              mean  sd  staff  priority
+    "surg_gs": [("충수절제술",      58,  21, 2, 10),  # appendectomy — urgent/emergent
+                ("담낭절제술",      87,  25, 2,  3),  # cholecystectomy — urgent
+                ("탈장교정술",      65,  20, 2,  1),  # hernia repair — elective
+                ("대장절제술",     151,  60, 3,  3)], # colectomy — urgent
+    "surg_os": [("슬관절치환술",    92,  37, 3,  1),  # TKA — elective
+                ("고관절치환술",   110,  40, 3,  3),  # hip replacement — urgent (fracture)
+                ("골절정복술",     152,  80, 2,  3)], # fracture fixation — urgent
+    "surg_ns": [("추간판절제술",   135,  50, 3,  3),  # discectomy — urgent
+                ("개두술",         169,  62, 3, 10)], # craniotomy — emergency
+    "surg_obgy": [("제왕절개",      55,  15, 2, 10),  # C-section — emergency
+                  ("자궁절제술",    79,  30, 2,  3)], # hysterectomy — urgent
+    "surg_oph": [("백내장수술",     30,  10, 1,  1),  # cataract — elective
+                 ("유리체절제술",   75,  25, 2,  3)], # vitrectomy — urgent
+    "surg_ent": [("편도절제술",     45,  15, 2,  1),  # tonsillectomy — elective
+                 ("부비동내시경수술", 90, 30, 2,  1)], # sinus endoscopy — elective
+    "surg_uro": [("경요도절제술",   94,  40, 2,  1),  # TURP — elective
+                 ("요로결석제거술", 80,  30, 2,  3)], # stone removal — urgent
+    "surg_cs": [("폐엽절제술",    180,  60, 3,  3)],  # lobectomy — urgent
+    "surg_ps": [("피판재건술",    157,  70, 2,  1)],  # flap reconstruction — elective
+}
+
+# Dedicated-block split of the 12 central rooms (sums to 12).  Thoracic and
+# plastic surgery share the general-surgery block (no room of their own).
+_JNUH_OR_BLOCKS: Dict[str, int] = {
+    "orblock_gs": 3,
+    "orblock_os": 3,
+    "orblock_ns": 2,
+    "orblock_obgy": 1,
+    "orblock_oph": 1,
+    "orblock_ent": 1,
+    "orblock_uro": 1,
+}
+
+_JNUH_BLOCK_OF_DEPT: Dict[str, str] = {
+    "surg_cs": "orblock_gs",
+    "surg_ps": "orblock_gs",
+}
+
+
+def _lognormal_minutes(rng: random.Random, mean: int, sd: int,
+                       lo: int = 15, hi: int = 420) -> int:
+    """Draw a lognormal duration with the given mean/SD, clamped to [lo, hi]."""
+    sigma2 = math.log(1.0 + (sd / mean) ** 2)
+    sigma = sigma2 ** 0.5
+    mu = math.log(mean) - sigma2 / 2.0
+    value = rng.lognormvariate(mu, sigma)
+    return max(lo, min(hi, int(round(value))))
+
+
+def generate_jnuh_instance(
+    n_patients: int = 20,
+    seed: int = 42,
+    crisis: bool = False,
+    dedicated_blocks: bool = False,
+    turnover: int = 20,
+) -> Instance:
+    """Generate a JNUH surgical-department instance (central OR suite).
+
+    Args:
+        n_patients:       Surgical patients to schedule (load knob; 20/50/100).
+        seed:             RNG seed — fully reproducible.
+        crisis:           True = crisis operation (room 12 -> 8, as reported
+                          during the 2024 residency walkout).
+        dedicated_blocks: False = pooled rooms (JNUH reality, 공용 풀).
+                          True  = departmental block limits added on top
+                          (orblock_* resources, capacities sum to 12).
+        turnover:         Room cleanup/setup minutes between cases (default 20,
+                          international benchmark 20–30).
+
+    Returns:
+        Instance with id 'jnuh-{normal|crisis}-{pool|block}-n{N}-seed{S}'.
+        Each patient contributes 3 chained tasks:
+          exam (staff only) -> surgery (room+staff+anesthesia+surgeon)
+          -> recovery (staff only).
+    """
+    if not (1 <= n_patients <= 200):
+        raise ValueError(f"n_patients={n_patients} out of range [1, 200]")
+
+    rng = random.Random(seed)
+
+    depts = [d for d, _ in _JNUH_CASE_MIX]
+    weights = [w for _, w in _JNUH_CASE_MIX]
+
+    tasks: Dict[str, Task] = {}
+
+    for p in range(n_patients):
+        pid = f"P{p:03d}"
+        dept = rng.choices(depts, weights=weights, k=1)[0]
+        # 5th tuple field (priority) is unused: the objective is unweighted Σwait.
+        label, mean, sd, staff_demand, _priority = rng.choice(_JNUH_SURGERY_TYPES[dept])
+
+        exam_id, surg_id, rec_id = f"{pid}_exam", f"{pid}_surg", f"{pid}_rec"
+
+        tasks[exam_id] = Task(
+            task_id=exam_id,
+            duration=rng.randint(10, 20),
+            resources={"staff": 1},
+            predecessors=[],
+            label=f"수술 전 검사 ({label})",
+            patient_id=pid,
+        )
+
+        surgery_resources: Dict[str, int] = {
+            "room": 1,
+            "staff": staff_demand,
+            "anesthesia": 1,
+            dept: 1,
+        }
+        if dedicated_blocks:
+            block = _JNUH_BLOCK_OF_DEPT.get(dept, "orblock_" + dept[5:])
+            surgery_resources[block] = 1
+
+        tasks[surg_id] = Task(
+            task_id=surg_id,
+            duration=_lognormal_minutes(rng, mean, sd),
+            resources=surgery_resources,
+            predecessors=[exam_id],
+            label=label,
+            patient_id=pid,
+        )
+
+        tasks[rec_id] = Task(
+            task_id=rec_id,
+            duration=rng.randint(20, 45),
+            resources={"staff": 1},
+            predecessors=[surg_id],
+            label=f"회복실 ({label})",
+            patient_id=pid,
+        )
+
+    resource_capacities: Dict[str, int] = {
+        "room": 8 if crisis else 12,
+        "staff": 24,        # nursing/support pool (estimate); bottleneck is anesthesia
+        "anesthesia": 8,    # estimate: concurrency upper-bound, no primary source
+        **_JNUH_SURGEONS,
+    }
+    if dedicated_blocks:
+        # NOTE (modelling choices, intentional):
+        #  - Under crisis the orblock split deliberately keeps the normal
+        #    12-room allocation; the global room=8 capacity dominates, so the
+        #    crisis-block cell is slightly looser per department than a true
+        #    8-room block plan would be.
+        #  - Turnover applies only to the global "room" pool (hard-coded in
+        #    baseline.py/rcpsp.py); orblock_* enforces capacity, not cleanup.
+        #    All algorithms see the same model, so comparisons remain fair.
+        resource_capacities.update(_JNUH_OR_BLOCKS)
+
+    mode = "crisis" if crisis else "normal"
+    layout = "block" if dedicated_blocks else "pool"
+    instance = Instance(
+        instance_id=f"jnuh-{mode}-{layout}-n{n_patients}-seed{seed}",
+        tasks=tasks,
+        resource_capacities=resource_capacities,
         seed=seed,
         source="synthetic",
         turnover=turnover,

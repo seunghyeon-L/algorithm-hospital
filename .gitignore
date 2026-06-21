@@ -17,3 +17,12 @@
 *.bak.html
 *.log
 .DS_Store
+
+# OMC 내부 상태 전체(세션·노트·메모리 — 공개 금지)
+/.omc/
+
+# 연구 스크래치 · 상대 팀 자료(ChatGPT·보고서 추출) · 실험 결과 CSV (재생성 가능, 공개 금지)
+backend/scripts/_*
+
+# 세션 대화 덤프
+terminal-conversation-export.md

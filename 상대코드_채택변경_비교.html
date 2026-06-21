@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JNUH 수술 스케줄링 — 상대 코드 vs 우리 결정 (채택·변경·근거)</title>
+<style>
+  :root{
+    --adopt:#16a34a; --change:#ea580c; --add:#2563eb; --reject:#6b7280;
+    --bg:#f8fafc; --card:#ffffff; --ink:#1e293b; --muted:#64748b; --line:#e2e8f0;
+    --wall:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI','Malgun Gothic',system-ui,sans-serif;margin:0;background:var(--bg);color:var(--ink);line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+  header{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;border-radius:18px;padding:34px 36px;margin-bottom:28px;box-shadow:0 10px 30px rgba(15,23,42,.18)}
+  header h1{margin:0 0 8px;font-size:26px}
+  header p{margin:4px 0;opacity:.92;font-size:15px}
+  h2{font-size:21px;margin:38px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  h2 .em{color:#2563eb}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 8px}
+  .badge{display:inline-block;font-size:12px;font-weight:700;color:#fff;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .b-adopt{background:var(--adopt)} .b-change{background:var(--change)} .b-add{background:var(--add)} .b-reject{background:var(--reject)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.05);font-size:14px}
+  th,td{padding:11px 13px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+  th{background:#f1f5f9;font-size:12.5px;letter-spacing:.02em;color:#334155;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  td.item{font-weight:700;white-space:nowrap}
+  td.opp{color:var(--muted);font-size:13px}
+  .reason{font-size:13px}
+  a{color:#2563eb;text-decoration:none;border-bottom:1px dotted #93c5fd}
+  a:hover{border-bottom-style:solid}
+  .src{font-size:12.5px}
+  .src a{display:inline}
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;font-size:13.5px;margin:14px 0}
+  .res th,.res td{text-align:center}
+  .res td.lab{text-align:left;font-weight:700}
+  .wallcell{color:var(--wall);font-weight:800}
+  .win{background:#ecfdf5;font-weight:700}
+  .concl{background:#0f172a;color:#e2e8f0;border-radius:14px;padding:24px 28px;margin-top:30px}
+  .concl h2{color:#fff;border-color:#334155}
+  .concl b{color:#7dd3fc}
+  .foot{color:var(--muted);font-size:12px;margin-top:26px;text-align:center}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>JNUH 수술 스케줄링 — 상대(4조) 코드 vs 우리 결정</h1>
+  <p>상대의 실제 제출 코드(<code>jejunuh_or_scheduling_project.py</code>, 1,473줄)를 줄 단위로 분석해, <b>무엇을 채택·변경·추가했는지</b>와 그 <b>이유·증거 출처</b>를 정리.</p>
+  <p>핵심: 상대 설정을 우리 네이티브 엔진에 통합 → <b>N·시간을 키우면 CP-SAT가 벽에 막히고 메타휴리스틱이 ~40% 앞선다</b> (상대가 못 본 영역).</p>
+</header>
+
+<div class="legend">
+  <span class="badge b-adopt">채택</span> 상대 것을 그대로 받음
+  &nbsp;&nbsp;<span class="badge b-change">변경</span> 상대와 다르게 우리 값/방식
+  &nbsp;&nbsp;<span class="badge b-add">추가</span> 상대엔 없던 것을 더함
+  &nbsp;&nbsp;<span class="badge b-reject">제외</span> 상대 것을 안 씀
+</div>
+
+<h2>1. 항목별 — <span class="em">상대 코드 → 우리 결정 → 이유 → 증거</span></h2>
+<table>
+<thead><tr><th>항목</th><th>상대 코드에 있던 것</th><th>우리 결정</th><th>분류</th><th>이유</th><th>증거·출처</th></tr></thead>
+<tbody>
+
+<tr>
+  <td class="item">작업 흐름</td>
+  <td class="opp">5단계 DAG: PRECHECK∥PREP→SURG→REC→DISCHARGE (간선 4개, 확인·준비 병렬)</td>
+  <td>동일 5단계 채택</td>
+  <td><span class="badge b-adopt">채택</span></td>
+  <td class="reason">상대와 동일 그래프라야 <b>apples-to-apples</b> 비교. JNUH 공개 당일수술 절차와도 일치.</td>
+  <td class="src">제주대병원 당일수술 안내(내원→준비→수술→회복→귀가)</td>
+</tr>
+
+<tr>
+  <td class="item">자원 종류·용량</td>
+  <td class="opp">OR=3 · preop_room=2 · anesthetist=2 · nurse=6 · pacu_bed=4 · doctor_S/M/L (보고서가 "단순화" 자인, 근거 없음)</td>
+  <td>우리 자원 + 회복베드: room=12 · staff=24 · anesthesia=8 · <b>pacu_bed=18</b> · 과별 외과의</td>
+  <td><span class="badge b-change">변경</span> <span class="badge b-add">추가</span></td>
+  <td class="reason">수술실·외과의는 <b>JNUH 공식 등록값</b>으로 더 단단. 회복실 병목(PACU blocking — 회복베드 없으면 수술실 못 비움)을 위해 pacu_bed 추가.</td>
+  <td class="src">수술실 12: <a href="https://m.hira.or.kr/mobile/rn/hosp/getHospInfo.do?ykiho=39100103" target="_blank">심평원 39100103</a></td>
+</tr>
+
+<tr>
+  <td class="item">PRECHECK 소요</td>
+  <td class="opp">triangular(10,20,30)분 (합성·임의)</td>
+  <td>triangular(5,10,15)분</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">한국 병원은 holding 없이 병동→수술방 직행이라 <b>활성 처치가 짧음</b>(입실→마취전 3.7분). "1시간 전 도착"은 대기라 작업시간 아님.</td>
+  <td class="src">박말영 2009 한국의료질향상학회지 15(2):65; <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8249906/" target="_blank">활력 PMC8249906</a> · <a href="https://www.ncbi.nlm.nih.gov/books/NBK133353/" target="_blank">WHO Sign-In NBK133353</a></td>
+</tr>
+
+<tr>
+  <td class="item">PREP 소요</td>
+  <td class="opp">triangular(15,25,40)분 (합성)</td>
+  <td>triangular(10,20,40)분</td>
+  <td><span class="badge b-change">변경</span> (소폭)</td>
+  <td class="reason">한국 ACT(마취조절시간) 12~17분 실측·미국 마취준비 9~11분과 맞춤. 상대값과 거의 같으나 한국 실측으로 근거화.</td>
+  <td class="src">Yoon 2005 대한마취과학회지 48(1):57 <a href="https://ekja.org/upload/pdf/kjae-48-57.pdf" target="_blank">(ekja)</a> · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10985884/" target="_blank">PMC10985884 n=15084</a></td>
+</tr>
+
+<tr>
+  <td class="item">REC(회복) 소요</td>
+  <td class="opp">0.2·SURG + tri(30,60,120), [30,180] (수술시간 비례)</td>
+  <td>0.2·SURG + tri(30,50,90), [35,180]</td>
+  <td><span class="badge b-adopt">채택</span> (방식) <span class="badge b-change">변경</span> (값)</td>
+  <td class="reason">"PACU 체류가 수술시간에 비례"하는 상대 방식이 문헌(비율~1.5)과 부합해 채택. 한국 PACU 중앙 36.7분에 맞춰 값 조정.</td>
+  <td class="src">박형숙 2012(n=885 PACU 36.7분) · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10702030/" target="_blank">PMC10702030 n=24017</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/31264209/" target="_blank">PMID 31264209</a></td>
+</tr>
+
+<tr>
+  <td class="item">DISCHARGE 소요</td>
+  <td class="opp">triangular(10,15,30)분 — <b>비현실적으로 짧음</b></td>
+  <td>triangular(30,60,120)분</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">Phase II 회복은 <b>임상 규정상 최소 30분</b>인데 상대 최대가 30분. 문헌 중앙 ~60분으로 상향 → 우리가 더 현실적.</td>
+  <td class="src">최소 30분 <a href="https://www.lhsc.on.ca/surgical-services-your-surgery/phase-ii-recovery-room-day-surgery-recovery" target="_blank">LHSC</a> · PADSS <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3797903/" target="_blank">PMC3797903</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/15875124/" target="_blank">PMID 15875124</a></td>
+</tr>
+
+<tr>
+  <td class="item">SURG 소요</td>
+  <td class="opp">case_type 일반 삼각분포 SHORT(30,60,90)/MED/LONG (문헌 아님; UZ Gent 옵션은 기본 OFF)</td>
+  <td>과별 lognormal (수술시간 문헌)</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">상대는 일반 범위. 우리는 <b>실제 수술별 시간 분포</b>(충수절제 58±21, TKA 92±37 등)로 더 근거 있음.</td>
+  <td class="src">수술시간 문헌(per-procedure operative-time studies)</td>
+</tr>
+
+<tr>
+  <td class="item">긴급도 가중치</td>
+  <td class="opp">정상 1~3 랜덤 + 응급 고정 5 (임의)</td>
+  <td>KTAS 시간역수 <b>16:8:4:2:1</b> (5단계)</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">둘 다 임의였음 → KTAS(목표시간 역수)로 <b>근거화</b>. 수술 긴급도 정식 체계(SWALIS·NCEPOD)와 정합.</td>
+  <td class="src"><a href="https://www.ktas.org/" target="_blank">KTAS</a> · SWALIS <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2651867/" target="_blank">Valente 2009</a> · <a href="https://www.ncepod.org.uk/classification.html" target="_blank">NCEPOD 2004</a></td>
+</tr>
+
+<tr>
+  <td class="item">목적함수</td>
+  <td class="opp">weighted_wait + 0.05·makespan + 2.0·overtime + 100000·위반 (복합, 가중 1종)</td>
+  <td>2종: 무가중 Σwait + KTAS 가중 Σwᵢ·waitᵢ (makespan/overtime 복합 제외)</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">상대=가중·우리=무가중 <b>두 관점 다</b> 측정. makespan/overtime 섞으면 "순수 대기"가 흐려져 제외.</td>
+  <td class="src">설계 결정 (무가중 Σwait = 프로젝트 PINNED 목적)</td>
+</tr>
+
+<tr>
+  <td class="item">wait 정의</td>
+  <td class="opp">flow 기준: (퇴원완료 − 도착 − 처리시간)</td>
+  <td>상대식 + 우리식(작업별 start−ready) <b>둘 다 보고</b></td>
+  <td><span class="badge b-adopt">채택</span> <span class="badge b-add">추가</span></td>
+  <td class="reason">상대 숫자와 1:1 비교 위해 상대식 채택, 자원경합을 보는 우리식 추가.</td>
+  <td class="src">설계 결정</td>
+</tr>
+
+<tr>
+  <td class="item">응급 처리</td>
+  <td class="opp">정적 + 완전예지만 (응급을 처음부터 앎, 재스케줄 없음)</td>
+  <td>정적 + <b>동적 재스케줄</b> 둘 다</td>
+  <td><span class="badge b-adopt">채택</span> <span class="badge b-add">추가</span></td>
+  <td class="reason">현실은 응급이 <b>예고 없이</b> 도착 → 시작작업 동결 후 재최적화. 상대가 안 한 차별점.</td>
+  <td class="src">JNUH 지역응급의료센터 24h (OMC 조사)</td>
+</tr>
+
+<tr>
+  <td class="item">CP-SAT</td>
+  <td class="opp">콜드(warm-start 없음) · time limit 기본 <b>1초</b></td>
+  <td>warm-start(AddHint) · 예산 가변</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">상대 1초 콜드는 약함. warm-start로 anytime 보장 → 우리 CP-SAT가 더 강함(공정).</td>
+  <td class="src">설계 결정</td>
+</tr>
+
+<tr>
+  <td class="item">GA / HGA / 시딩</td>
+  <td class="opp">GA pop=12·gen=6, HGA=GA+지역탐색, 6개 휴리스틱 시딩 (데모용 작은 값)</td>
+  <td>동일 구조 채택: GA-seeded · HGA, 6휴리스틱 시딩</td>
+  <td><span class="badge b-adopt">채택</span></td>
+  <td class="reason">상대 알고리즘 구조를 그대로 매칭(공정 비교). 시딩·HGA 모두 상대와 동형.</td>
+  <td class="src">상대 코드 구조</td>
+</tr>
+
+<tr>
+  <td class="item">엔진</td>
+  <td class="opp">순수 파이썬 (numba 없음)</td>
+  <td><b>Numba 네이티브</b> 다선행 디코더 (13×, Python과 비트동일)</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">상대(파이썬·N8~10)는 큰 N 불가. 네이티브로 <b>N=1000(5000작업)</b> 측정 가능 → 스케일링 벽 입증.</td>
+  <td class="src">동등성 검증 PASS (numba==python)</td>
+</tr>
+
+<tr>
+  <td class="item">시간 단위 / N</td>
+  <td class="opp">5분 스텝 · N=8~10 (운영일 구조 없음)</td>
+  <td>연속 분 · N 파라미터 8~1000 · 24h 연속</td>
+  <td><span class="badge b-change">변경</span></td>
+  <td class="reason">스케일링이 우리 핵심 기여라 N을 손잡이로. 운영일 구조는 양 팀 다 없어 24h 연속 단순화.</td>
+  <td class="src">설계 결정</td>
+</tr>
+
+<tr>
+  <td class="item">Tabu/ALNS/"inspired"</td>
+  <td class="opp">코드엔 있으나 기본 비활성; Riise/Vieira 등 "inspired"는 docstring뿐(실구현 없음)</td>
+  <td>제외</td>
+  <td><span class="badge b-reject">제외</span></td>
+  <td class="reason">상대도 최종 비교에서 안 씀(비활성). 핵심 5종에 집중.</td>
+  <td class="src">상대 코드 enabled_algorithms 분석</td>
+</tr>
+
+</tbody>
+</table>
+
+<div class="note">
+🔴 <b>여전히 임의(상대도 우리도 근거 없음 — 투명 고지 + 민감도분석 대상)</b>: staff=24 · anesthesia=8 · pacu_bed=18(PACU:OR 1.5 비율) · case-mix 비율 · 수술당 staff 2~3.
+상대는 자원값을 <i>전부</i> 임의로 두고 보고서에서 "단순화"라 자인한 반면, 우리는 수술실·수술시간·가중치·단계소요를 근거화해 임의값을 9개→5개로 줄였습니다.
+</div>
+
+<h2>2. 결과 — <span class="em">N(문제 크기)별</span> (네이티브, 예산 8초, %개선 vs baseline)</h2>
+<table class="res">
+<thead><tr><th>N (작업수)</th><th>GA-seeded</th><th>HGA</th><th>CP-SAT</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td class="lab">100 (500)</td><td>11.8</td><td>11.3</td><td>3.7</td><td>소규모</td></tr>
+<tr><td class="lab">300 (1,500)</td><td>33.1</td><td>25.8</td><td>31.7</td><td>접전</td></tr>
+<tr><td class="lab">500 (2,500)</td><td>32.3</td><td>34.3</td><td class="win">37.4</td><td>CP-SAT 아직 우세</td></tr>
+<tr><td class="lab">700 (3,500)</td><td class="win">39.8</td><td>37.1</td><td class="wallcell">0.0 🧱</td><td>CP-SAT 벽</td></tr>
+<tr><td class="lab">1000 (5,000)</td><td class="win">40.6</td><td>34.8</td><td class="wallcell">0.0 🧱</td><td>CP-SAT 벽</td></tr>
+</tbody>
+</table>
+<p style="font-size:13.5px;color:var(--muted)">크로스오버 ≈ N 500~700. 그 위에서 CP-SAT는 5,000작업을 8초에 못 풀어 0% → 메타휴리스틱 40% 압도.</p>
+
+<h2>3. 결과 — <span class="em">시간제한(예산)별</span> (무가중, %개선)</h2>
+<table class="res">
+<thead><tr><th>N</th><th>알고리즘</th><th>2초</th><th>5초</th><th>10초</th><th>20초</th><th>패턴</th></tr></thead>
+<tbody>
+<tr><td class="lab">200</td><td class="lab">HGA</td><td>19.7</td><td>24.3</td><td>28.9</td><td class="win">30.4</td><td>시간↑→꾸준히↑</td></tr>
+<tr><td class="lab">200</td><td class="lab">CP-SAT</td><td>22.0</td><td>22.1</td><td>22.1</td><td>22.2</td><td>22%서 정체</td></tr>
+<tr><td class="lab">500</td><td class="lab">HGA</td><td>31.9</td><td>32.7</td><td>35.2</td><td>36.8</td><td>시간↑→↑</td></tr>
+<tr><td class="lab">500</td><td class="lab">CP-SAT</td><td class="wallcell">0.0 🧱</td><td>37.4</td><td>37.4</td><td>37.4</td><td>2초선 벽, 5초↑ 정체</td></tr>
+<tr><td class="lab">1000</td><td class="lab">GA-seeded</td><td>33.1</td><td class="win">40.6</td><td>40.6</td><td>40.6</td><td>5초에 수렴</td></tr>
+<tr><td class="lab">1000</td><td class="lab">CP-SAT</td><td class="wallcell">0.0 🧱</td><td class="wallcell">0.0 🧱</td><td class="wallcell">0.0 🧱</td><td class="wallcell">0.0 🧱</td><td>20초도 벽</td></tr>
+</tbody>
+</table>
+
+<div class="concl">
+<h2>결론</h2>
+<p><b>CP-SAT</b>: 빨리 좋은 답에 도달하지만 <b>거기서 멈추고(정체)</b>, 큰 문제는 <b>아예 못 푼다(벽)</b>. N=500은 2초선 벽·5초↑면 풀림, N=1000은 20초도 벽.</p>
+<p><b>메타휴리스틱(HGA·GA-seeded)</b>: 벽 없이 <b>시간·규모에 비례해 계속 향상</b> → CP-SAT를 추월. N=200서도 HGA가 ~5초에 CP-SAT 추월.</p>
+<p>→ <b>크로스오버 = N↑ 또는 시간↑</b> 어느 쪽으로 가도 메타휴리스틱 우위로 이동. 상대(N8~10·짧은 예산)는 <b>CP-SAT 정체 전 구간만</b> 봤기에 "CP 압도"로 결론. 우리는 두 축을 다 밀어 그 결론이 뒤집히는 지점을 실측했다.</p>
+</div>
+
+<p class="foot">출처 약자: PMC/PMID/DOI = 미국 국립의학도서관 PubMed·PubMed Central·Digital Object Identifier(의학 인용 표준) · ekja.org = 대한마취통증의학회지 · HIRA = 건강보험심사평가원 · LHSC = London Health Sciences Centre(병원 기관자료). 상대 코드 = jejunuh_or_scheduling_project.py 1,473줄 직접 분석. 검증: 신규 19 + 기존 167 테스트 통과 · Numba 디코더 Python과 비트동일 · 3개 실험(168+60+36행) 에러 0.</p>
+
+</div>
+</body>
+</html>

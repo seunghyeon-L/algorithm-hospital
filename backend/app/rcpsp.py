@@ -49,6 +49,7 @@ def schedule_rcpsp(
     instance: Instance,
     time_limit_sec: float = DEFAULT_TIME_LIMIT_SEC,
     random_seed: int = DEFAULT_RANDOM_SEED,
+    hint_schedule: Optional[Schedule] = None,
 ) -> Schedule:
     """Solve the RCPSP for *instance* using OR-Tools CP-SAT.
 
@@ -64,6 +65,11 @@ def schedule_rcpsp(
         Wall-clock budget for the solver (default 30 s).
     random_seed:
         CP-SAT random seed for reproducibility (default 42).
+    hint_schedule:
+        Optional feasible schedule used as the warm-start hint instead of the
+        greedy baseline (e.g. an SA/GA solution — SCIL pattern).  When None,
+        the greedy baseline is used (legacy behaviour, fully backward
+        compatible).
 
     Returns
     -------
@@ -189,10 +195,13 @@ def schedule_rcpsp(
     # inconsistent hint is safely ignored by the solver, never blocks solving.
     # ------------------------------------------------------------------
     try:
-        from backend.app.baseline import schedule_baseline
+        if hint_schedule is not None:
+            _hint = hint_schedule
+        else:
+            from backend.app.baseline import schedule_baseline
 
-        _base = schedule_baseline(instance)
-        for _tid, _a in _base.assignments.items():
+            _hint = schedule_baseline(instance)
+        for _tid, _a in _hint.assignments.items():
             if _tid in start_vars:
                 model.AddHint(start_vars[_tid], _a.start)
     except Exception:

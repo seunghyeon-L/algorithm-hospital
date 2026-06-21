@@ -44,6 +44,11 @@ class Task:
     patient_id: Optional[str] = None
     """Optional grouping key for patient-level reporting."""
 
+    release_time: int = 0
+    """Earliest permissible start (patient arrival / emergency release time).
+    0 = available from t=0 (default, backward-compatible).  ready(task) is
+    raised to at least release_time, so a task cannot start before it."""
+
 
 # ---------------------------------------------------------------------------
 # Instance (problem input)
@@ -138,13 +143,15 @@ class TaskAssignment:
     # ------------------------------------------------------------------
 
     def ready(self, instance: Instance, schedule: "Schedule") -> int:
-        """ready(task) = max finish of predecessors (precedence-only).
-        Returns 0 if no predecessors."""
+        """ready(task) = max(release_time, max finish of predecessors).
+        With no predecessors this is just release_time (0 by default)."""
         task = instance.tasks[self.task_id]
+        base = task.release_time
         if not task.predecessors:
-            return 0
+            return base
         return max(
-            schedule.assignments[pred].end for pred in task.predecessors
+            base,
+            max(schedule.assignments[pred].end for pred in task.predecessors),
         )
 
     def wait(self, instance: Instance, schedule: "Schedule") -> int:
@@ -194,6 +201,11 @@ class Schedule:
 
             if asgn.start < 0:
                 raise ValueError(f"Task {task_id}: start={asgn.start} is negative")
+
+            if asgn.start < task.release_time:
+                raise ValueError(
+                    f"Task {task_id}: start={asgn.start} < release_time={task.release_time}"
+                )
 
             expected_end = asgn.start + task.duration
             if asgn.end != expected_end:

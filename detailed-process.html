@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>상세 과정 — 제주대병원 외과계 수술 스케줄링 실험 전 과정</title>
+<style>
+  :root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;--card:#fff;
+    --blue:#2563eb;--bluebg:#eff6ff;--teal:#0d9488;--tealbg:#f0fdfa;
+    --amber:#d97706;--amberbg:#fffbeb;--red:#dc2626;--redbg:#fef2f2;
+    --violet:#7c3aed;--violetbg:#f5f3ff;--green:#16a34a;--greenbg:#f0fdf4;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","맑은 고딕",sans-serif;
+    line-height:1.75;font-size:15.5px;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px;}
+  header.top{text-align:center;padding:24px 0 10px;border-bottom:2px solid var(--line);margin-bottom:8px;}
+  header.top h1{font-size:27px;margin:0 0 8px;letter-spacing:-.5px;}
+  header.top p{color:var(--muted);margin:4px 0;font-size:14.5px;}
+  h2.sec{font-size:21px;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line);}
+  h3{font-size:17px;margin:20px 0 8px;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{background:#f1f5f9;font-weight:600;}
+  tr:last-child td{border-bottom:none;}
+  .num{font-variant-numeric:tabular-nums;font-weight:600;}
+  .good{color:var(--green);font-weight:700;}
+  .bad{color:var(--red);font-weight:700;}
+  .callout{border-radius:10px;padding:12px 16px;margin:12px 0;font-size:14px;}
+  .c-key{background:var(--bluebg);border:1px solid #bfdbfe;}
+  .c-warn{background:var(--redbg);border:1px solid #fecaca;}
+  .c-note{background:#f8fafc;border:1px solid var(--line);}
+  .c-good{background:var(--greenbg);border:1px solid #bbf7d0;}
+  code{background:#eef2f7;border-radius:5px;padding:1px 6px;font-size:13px;font-family:Consolas,monospace;}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-size:13px;overflow-x:auto;font-family:Consolas,monospace;line-height:1.55;}
+  .mini{font-size:13px;color:var(--muted);}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 20px;margin:16px 0;font-size:14px;}
+  .toc a{color:var(--blue);text-decoration:none;}
+  .step{display:flex;gap:12px;margin:10px 0;}
+  .step .n{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;
+    display:flex;align-items:center;justify-content:center;}
+  .foot{margin-top:42px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;}
+  a{color:var(--blue);}
+  .badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;vertical-align:1px;}
+  .b-v{background:var(--greenbg);color:#15803d;border:1px solid #bbf7d0;}
+  .b-e{background:var(--amberbg);color:#92400e;border:1px solid #fde68a;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>제주대병원 외과계 수술 스케줄링 — 전 과정 상세 문서</h1>
+  <p>문제 정의 → 조사 → 목적함수 → 인스턴스 설계 → 알고리즘 5종 → 실험 → 결과 → 논문 비교 → 한계</p>
+  <p>실험일 2026-06-11 · 120런 · 시드 3개 평균 · 테스트 167개 통과<span class="mini">(구현 정합성 — 데이터·가정의 현실성과는 무관)</span> · 쉬운 버전: easy-explainer.html</p>
+</header>
+
+<div class="toc"><b>목차</b> &nbsp;
+  <a href="#s1">① 문제 정의</a> · <a href="#s2">② 사전 조사</a> · <a href="#s3">③ 목적함수</a> ·
+  <a href="#s4">④ 인스턴스 설계</a> · <a href="#s5">⑤ 알고리즘 5종</a> · <a href="#s6">⑥ 실험 설계</a> ·
+  <a href="#s7">⑦ 결과</a> · <a href="#s8">⑧ 논문 비교</a> · <a href="#s9">⑨ 한계</a> · <a href="#s10">⑩ 재현 방법</a>
+</div>
+
+<h2 class="sec" id="s1">① 문제 정의 — 무엇을 푸는가</h2>
+<p><b>한 문장:</b> 제주대학교병원 중앙수술부의 하루 외과계 수술 일정을, 자원(수술실·마취과·과별 집도의)을 전혀 늘리지 않고, <b>환자 총 대기시간(Σwait)이 최소가 되도록</b> 배치하는 RCPSP(자원제약 프로젝트 스케줄링) 문제.</p>
+<ul>
+  <li><b>왜 제주대병원?</b> 의료진 부족이 "자원을 늘릴 수 없다"를 가정이 아닌 <b>현실</b>로 만든 병원이다. 2024년 전공의 이탈 후 하루 수술이 <b>평균 50건 → 절반 이하</b>로 줄었고(<a href="https://www.jejusori.net/news/articleView.html?idxno=430059" target="_blank">제주의소리 2024.8</a>), 전국 국공립대병원 수술 취소율은 11.9%→23.3%·수술 예약은 7,800→4,215건(−46.6%)으로 악화됐다(<a href="https://www.koreahealthlog.com/news/articleView.html?idxno=48458" target="_blank">코리아헬스로그 2024</a>). 병동 2개 폐쇄, 2019–24 누적적자 1,016억 원(<a href="https://www.jejusori.net/news/articleView.html?idxno=434683" target="_blank">제주의소리</a>). <b>본 연구는 전공의가 복귀한 현재(평상시 12실)를 기본 무대로 삼고, 2024 위기(8실)는 별도 스트레스 시나리오로 비교한다.</b> <span class="mini">※ 도민 전체의 도외 원정진료(연 14.5만 명·2,448억 원, 2024)는 지역 의료공백의 <b>배경</b>일 뿐, 제주대병원 한 곳의 수술 대기로 직접 환산되는 수치는 아니다 — 근거로는 위의 병원 자체 통계를 쓴다.</span></li>
+  <li><b>왜 외과계만?</b> 중앙수술부(수술실 12개)는 사실상 외과계 메이저 수술이 점유. 내과계 시술은 내시경실·당일수술센터(별도, 2층)에서 진행.</li>
+  <li><b>형식 정의:</b> 환자 i = 작업 체인 [검사 → 수술 → 회복]. wait(t) = start(t) − ready(t), ready(t) = 선행 작업의 최대 종료시각. 목적 = min Σ wait(t). 자원 제약: 모든 시점에서 자원별 동시 사용량 ≤ 용량(cumulative).</li>
+</ul>
+
+<h2 class="sec" id="s2">② 사전 조사 — 수술실은 공용인가 전용인가 (용어부터 풀어서)</h2>
+<p><b>풀어야 했던 질문:</b> "제주대병원 수술실은 외과계 여러 과가 <b>함께</b> 쓰는가, 아니면 과마다 <b>전용</b> 수술실이 따로 있는가?" 이 답에 따라 모델이 완전히 달라진다. 먼저 핵심 용어를 일상 비유로 풀어 본다.</p>
+<div class="callout c-note">
+<b>📖 용어 풀이 (전문용어 없이)</b>
+<ul style="margin:8px 0 0;padding-left:20px;">
+<li><b>중앙수술부</b> = 병원 수술실들을 한데 모아 통합 관리하는 부서. <i>대형마트의 계산대 구역</i>과 같다 — 계산대 12개를 매니저 한 명이 "어느 줄을 열지, 직원을 어디 둘지" 중앙에서 정한다. 제주대병원은 3층에 수술실 12개가 모두 이 부서 소속이다.</li>
+<li><b>공용 풀(pool)</b> = 수술실을 특정 과에 고정하지 않고 <b>비면 아무 과나 쓰는</b> 방식. <i>슈퍼마켓 "한 줄 서기"</i>처럼 빈 계산대가 나오면 맨 앞 사람이 바로 간다. 12개가 하나의 묶음으로 작동한다.</li>
+<li><b>블록타임 배정(block)</b> = 수술실 시간을 미리 덩어리로 잘라 과별로 나눠 주는 방식. <i>학교 급식 시간표</i>처럼 "수요일 오전은 정형외과, 오후는 외과" 식이다. 정형외과 환자가 적어도 그 시간은 정형외과 것이라 외과 방이 비어도 못 쓴다. 대신 같은 팀(집도의·마취과·간호사)이 정기적으로 모여 손발을 맞출 수 있다.</li>
+<li><b>"과별 전용 수술실"</b> = 벽에 문패를 단 물리적 고정이 아니라, 위의 <b>블록 배정이라는 운영 규칙</b>으로 생긴 것. <i>회의실에 "화요일 오전=재무팀 예약" 규칙만 정해 둔 것</i>과 같다 — 건물은 그대로고 규칙만 다르다.</li>
+<li><b>당일수술센터</b> = 입원 없이 당일 외래로 받는 가벼운 수술·시술 전담 시설(2층, 경증 6개과). 우리 연구 범위 밖이다.</li>
+</ul>
+<p class="mini" style="margin:10px 0 0">👉 케이스믹스·풀링 효과·가동률까지 8개 용어를 생활 비유로 더 자세히: <b><a href="glossary-explainer.html">용어사전 페이지</a></b></p>
+</div>
+<h3>조사 1 — 한국 병원의 표준: "공용 풀 + 블록 배정" 하이브리드</h3>
+<p>한국 94개 마취과 수련병원 조사(2016)에서 수술실은 마취과 OR 관리자가 <b>중앙에서 통합 관리</b>하며, 전용 스케줄링 소프트웨어를 쓰는 병원은 0%였다(<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5047985/" target="_blank">PMC5047985</a>). 즉 대부분 수술실을 한데 모아 관리하면서(공용 풀), 관행적으로 과별 시간 블록을 배정한다(<a href="https://link.springer.com/article/10.1007/s10729-014-9269-z" target="_blank">블록타임 문헌, HCMS 2014</a>). "과별 전용 수술실"이라는 말은 건물 구조가 아니라 이 블록 규칙을 가리킨다.</p>
+<h3>조사 2 — 제주대병원의 실제 구조</h3>
+<ul>
+<li><b>3층 중앙수술부(수술실 12개)</b> — 우리 연구의 무대. 외과계 메이저 수술이 점유한다. 분만은 별도 분만실. 2024년 전공의 이탈 때 인력 부족으로 12개 중 <b>8개만 운영</b>했다는 보도가 있다(<a href="https://www.jejusori.net/news/articleView.html?idxno=426231" target="_blank">제주의소리 2024</a>) — 이 상황이 실험의 "위기 모드".</li>
+<li><b>2층 당일수술센터</b> — 비뇨기과·소화기내과·순환기내과·안과·이비인후과·치과의 경증 시술. 입원 불필요, 연구 범위 밖(<a href="https://www.jejunuh.co.kr/treatment/jiryu/daysurgery/_/view.do" target="_blank">당일수술센터</a>, <a href="https://www.jejunuh.co.kr/facfloor" target="_blank">층별안내</a>).</li>
+</ul>
+<p>즉 제주대병원에 "신경외과 전용 수술실 3호" 같은 물리적 전용방은 없다. 12개가 외과계 전 과에 공유되고, 실제 운영에서만 과별 블록 관행이 있을 수 있다.</p>
+<div class="callout c-key">→ "공용 vs 전용"은 <b>운영 선택</b>의 문제이므로 정답을 가정하지 않고 <b>실험 변인(V2)으로 직접 비교</b>한다. 큐잉이론은 공용 풀("한 줄 서기")이 대기에 유리하다고 예측한다(=<b>풀링 효과</b>) — 이를 검증한다.</div>
+
+<h2 class="sec" id="s3">③ 목적함수 선정 — 왜 Σwait인가</h2>
+<table>
+  <tr><th>후보</th><th>판정</th><th>이유</th></tr>
+  <tr><td><b>Σwait (총 대기)</b></td><td class="good">주목적(최적화 대상)</td><td>자원을 고정했을 때 <b>일정이 실제로 바꿀 수 있는 값</b>(우리 실험: 알고리즘 간 최대 약 40% 차이)이라 비교 축으로 적합. <b>제주대 직접 근거</b>: 전공의 이탈 후 수술 반토막(50→≤25건/일)·취소율 23.3%로 "오래 못 받는" 문제가 실재. <b>일반 문헌 근거(제주대 한정 아님)</b>: 암 수술 4주 지연당 사망위험 약 +6~8%(암종별 상이, <a href="https://www.bmj.com/content/371/bmj.m4087" target="_blank">BMJ 2020 Hanna</a>), "환자 대기비용이 가장 민감한 목적"(Ghandehari 2022). <span class="mini">단 제주대의 <b>암 수술 지연 직접 통계는 공개돼 있지 않다</b> — BMJ는 "대기 최소화가 임상적으로 정당하다"는 일반 근거로만 인용하며, 제주대 고유 근거로는 위의 병원 자체 통계를 쓴다.</span></td></tr>
+  <tr><td>makespan (총 완료시각)</td><td>공동 측정</td><td>자원·일감 고정 시 변동폭 작음. 단 Guo 2026과의 비교를 위해 측정 병행</td></tr>
+  <tr><td>가동률·초과근무</td><td>진단 KPI</td><td>makespan에 종속 — 보고만</td></tr>
+  <tr><td>가중 Σ(wᵢ·waitᵢ)</td><td>비채택</td><td>연구 담당은 우선순위 가중을 권고했으나 <b>최종 미채택</b>: 가중치(응급10·긴급3·선택1)가 근거 없는 임의값이라, 추정 케이스믹스·추정 수술시간 위에 임의 가중치를 또 얹으면 <b>추정의 3중첩</b>이 된다(비판 담당 지적). 우선순위 반영은 가치 있으나 정당화할 1차 근거가 없어, 해석을 흐리지 않도록 <b>단순 Σwait로 통일</b>(사용자 결정).</td></tr>
+  <tr><td>마감 패널티(Lopes식)</td><td>비채택</td><td>일 단위 대기자명단 문제 — 분 단위 RCPSP와 구조 상이</td></tr>
+</table>
+<p class="mini">상세 근거 자료집: 근거자료_대기시간_목적함수.html (만족도·임상·한국 통계·큐잉이론·스케줄링 실증 — 출처 검증 포함)</p>
+
+<h2 class="sec" id="s4">④ 인스턴스 설계 — 제주대병원을 데이터로</h2>
+<h3>고정 자원 상수</h3>
+<table>
+  <tr><th>자원</th><th>용량</th><th>신뢰도</th></tr>
+  <tr><td>수술실 room</td><td class="num">12 (위기 모드 8)</td><td><span class="badge b-v">검증</span> <b>12 = 평시·회복 후</b>(2026 공공DB 등록 12실, 2025.9 전공의 81.7% 복귀·가동률 65% 회복) / <b>8 = 위기</b>(2024.2 전공의 이탈 직후 8실 축소 보도). 과도기 2024.3~2025.8 실가동은 8실이었을 가능성 — <b>기본은 현재 상태인 12, 8은 2024 위기 시나리오</b></td></tr>
+  <tr><td>마취과 anesthesia</td><td class="num">8</td><td><span class="badge b-e">추정</span> 동시 수술 수의 실질 상한(병목)으로 가정 — 마취 전문의 수의 1차 출처 미확보</td></tr>
+  <tr><td>과별 집도의 surg_*</td><td class="num">외과11 · 정형8 · 산부6 · 안과6 · 신경5 · 이비5 · 비뇨4 · <b>흉부1 · 성형1</b></td><td><span class="badge b-e">추정</span> 홈페이지 의료진 수동집계(2026.6)</td></tr>
+  <tr><td>보조인력 staff</td><td class="num">24</td><td><span class="badge b-e">추정</span> 마취(8)가 병목이 되도록 넉넉히 둔 <b>설계값</b> — 민감도 미검증(줄이면 staff도 병목이 될 수 있음)</td></tr>
+  <tr><td>전환시간 turnover</td><td class="num">20분</td><td>국제 벤치마크 20~30분</td></tr>
+</table>
+<h3>환자 생성 (시드 재현 가능)</h3>
+<div class="step"><div class="n">1</div><div>과 배정: 현실 케이스믹스 가중 추첨 — 외과 24%·정형 20%·산부/안과 12%·이비/신경 10%·비뇨 8%·<b>흉부/성형 각 2%</b>(전문의 1명 과가 인스턴스를 망치지 않도록 소수 배정, 국소 병목 역할). <b>주의(한계)</b>: 흉부·성형은 전문의 1명짜리 최악 병목이지만 발생 빈도를 2%로 낮게 둬서, 실험에서 이 병목의 영향이 <b>현실보다 과소평가</b>된다 — "흉부외과 1명" 서사와 실험 설정 사이의 간극(⑨ 한계 참조).</div></div>
+<div class="step"><div class="n">2</div><div>수술 종류·시간: 과별 수술 종류 추첨 후 <b>lognormal 분포</b>에서 시간 추출 — 평균±SD는 문헌 실측(충수절제 58±21, 슬관절치환 92±37, 개두술 169±62, 과 평균: 정형 152±92·외과 151±98·신경 135±92·비뇨 94±77·산부 79±79분). 15~420분 클램프</div></div>
+<div class="step"><div class="n">3</div><div>작업 체인: 검사(10~20분, staff:1) → 수술(room:1 + staff:1~3 + anesthesia:1 + surg_과:1) → 회복(20~45분, staff:1)</div></div>
+<div class="step"><div class="n">4</div><div>블록(전용) 변인: <code>"room"</code> 키는 turnover 처리를 위해 코드에 하드코딩되어 있어 유지하고, <b>추가 자원 <code>orblock_과</code></b>(외과3·정형3·신경2·산부1·비뇨1·안과1·이비1 = 합 12, 흉부·성형은 외과 블록 공유)를 수술 작업에 얹어 과별 상한을 표현 — <b>알고리즘 코드 0줄 변경</b></div></div>
+
+<h2 class="sec" id="s5">⑤ 알고리즘 5종</h2>
+<table>
+  <tr><th>알고리즘</th><th>계열</th><th>작동 원리(요약)</th></tr>
+  <tr><td><b>baseline</b></td><td>그리디</td><td>위상정렬 순서로 "지금 배치 가능한 가장 이른 시각"에 즉시 배치. 0.1초, 비교 기준선</td></tr>
+  <tr><td><b>CP-SAT</b> (RCPSP)</td><td>정확해(CP)</td><td>제약 전파(불가능 후보 삭제) + 충돌 학습 + 분기한정. <code>AddCumulative</code>로 자원, <code>AddMaxEquality</code>로 ready 변수 구성 후 Σwait 최소화. baseline 해를 warm-start 힌트로</td></tr>
+  <tr><td><b>GA</b> (DEAP)</td><td>군집 메타휴리스틱</td><td>순열 인구 100 → 토너먼트 선택·순서교차·셔플변이 반복. 공유 그리디 디코더로 일정화</td></tr>
+  <tr><td><b>SA</b></td><td>궤적 메타휴리스틱</td><td>두 작업 swap 이웃, Metropolis 수용 exp(−Δ/T), 냉각 0.9975. 위상정렬 초기해</td></tr>
+  <tr><td><b>SCIL</b> ★신규</td><td>하이브리드</td><td><b>SA 초안 → CP-SAT에 AddHint 주입 → 외부 루프 반복(k=2)</b>, incumbent(역대 최선) 보존으로 하한 보장. SA→CP warm-start는 다수 하이브리드 문헌의 일반 패턴이며, 의료 도메인의 가장 가까운 선례는 IHTC 2024 3위 Twente 팀(논문 arXiv:2511.04685, 2025.11 게재). <b>단 그들은 Gurobi(상용)를 함께 썼고, 우리는 그 아이디어를 OR-Tools(CP-SAT) 전용으로 단순화</b>한 것 — "검증된 패턴 이식"이 아니라 <b>아이디어 차용</b></td></tr>
+</table>
+<pre># SCIL 핵심 (backend/app/scil.py)
+for r in range(outer_rounds):                  # k = 2
+    sa = schedule_sa(inst, seed=seed+r, time_limit=sa_budget)   # ① SA 초안
+    incumbent = best(incumbent, sa)
+    cp = schedule_rcpsp(inst, time_limit=cp_budget,
+                        hint_schedule=incumbent)                # ② warm-start CP
+    incumbent = best(incumbent, cp)            # 하한 보장: 절대 나빠지지 않음</pre>
+
+<h2 class="sec" id="s6">⑥ 실험 설계</h2>
+<table>
+  <tr><th>축</th><th>수준</th></tr>
+  <tr><td>V1. 환자 부하 N</td><td>20 / 50 / 100명 (작업 60 / 150 / 300개)</td></tr>
+  <tr><td>V2. 수술실 운영</td><td>공용 풀(pool) vs 과별 블록(block)</td></tr>
+  <tr><td>V3. 운영 모드</td><td>정상(방 12) vs 위기(방 8, N=50만)</td></tr>
+  <tr><td>알고리즘 / 시드 / 예산</td><td>5종 × 시드 {42, 7, 99} × <b>전원 동일 15초</b></td></tr>
+</table>
+<p>= 8개 셀 × 3시드 × 5알고리즘 = <b>120런</b>, 오류 0건. 측정: Σwait·작업당 평균 대기·makespan·초과근무·가동률·실행시간.</p>
+
+<h2 class="sec" id="s7">⑦ 결과 (시드 3개 평균, Σwait 분)</h2>
+<table>
+  <tr><th>셀</th><th>baseline</th><th>CP-SAT</th><th>GA (공정)</th><th>SA (공정)</th><th>SCIL</th></tr>
+  <tr><td>N=20 정상·공용</td><td class="num">1,255</td><td class="num">867 (−30.9%)</td><td class="num">873 (−30.4%)</td><td class="num good">861 (−31.4%)</td><td class="num">862 (−31.3%)</td></tr>
+  <tr><td>N=20 정상·블록</td><td class="num">1,358</td><td class="num">977 (−28.1%)</td><td class="num">976 (−28.1%)</td><td class="num">972 (−28.4%)</td><td class="num good">972 (−28.4%)</td></tr>
+  <tr><td>N=50 정상·공용</td><td class="num">11,697</td><td class="num good">8,205 (−29.9%)</td><td class="num">9,533 (−18.5%)</td><td class="num">8,571 (−26.7%)</td><td class="num">8,222 (−29.7%)</td></tr>
+  <tr><td>N=50 정상·블록</td><td class="num">11,759</td><td class="num">8,723 (−25.8%)</td><td class="num">9,796 (−16.7%)</td><td class="num">9,498 (−19.2%)</td><td class="num good">8,710 (−25.9%)</td></tr>
+  <tr><td>N=50 위기·공용</td><td class="num">14,159</td><td class="num good">10,700 (−24.4%)</td><td class="num">11,936 (−15.7%)</td><td class="num">11,794 (−16.7%)</td><td class="num">10,710 (−24.4%)</td></tr>
+  <tr><td>N=50 위기·블록</td><td class="num">14,663</td><td class="num good">11,059 (−24.6%)</td><td class="num">12,426 (−15.3%)</td><td class="num">12,377 (−15.6%)</td><td class="num">11,106 (−24.3%)</td></tr>
+  <tr><td>N=100 정상·공용</td><td class="num">52,198</td><td class="num">37,306 (−28.5%)</td><td class="num">48,441 (−7.2%)</td><td class="num">51,120 (−2.1%)</td><td class="num good">37,167 (−28.8%)</td></tr>
+  <tr><td>N=100 정상·블록</td><td class="num">52,289</td><td class="num good">39,161 (−25.1%)</td><td class="num">48,356 (−7.5%)</td><td class="num">51,052 (−2.4%)</td><td class="num">39,599 (−24.3%)</td></tr>
+</table>
+<p class="mini">값 = 총 대기(분), 시드 3개 평균. 괄호 = baseline 대비 감소율. <b class="good">초록</b> = 행 최저값(단 N=20·N=50 일부는 CP·SA·SCIL이 <b>통계적 동급</b> — 차이가 시드 노이즈 이내).</p>
+<h3>주요 발견</h3>
+<ol>
+  <li><b>① 디코더를 고친 '공정 비교' — 규모에 따라 갈린다.</b> N=20에선 GA·SA·SCIL·CP-SAT가 모두 −28~−31%로 <b>사실상 동급</b>(작은 문제는 메타휴리스틱도 최적에 근접). N=50에선 SA −26.7%가 CP-SAT(−29.9%)에 바짝 붙고 GA도 −18.5%로 따라온다. N=100에선 CP-SAT(−28.5%)·SCIL(−28.8%)만 큰 폭을 유지하고 GA(−7.2%)·SA(−2.1%)는 크게 뒤처진다.</li>
+  <li><b>② 그 이유(정직): 디코더가 아니라 '수렴 부족'.</b> 공유 디코더를 45× 가속(아래 공정성 주석)했는데도 N=100(300작업)에선 15초 안에 GA가 약 2세대, SA가 약 323회밖에 못 돈다 — 300작업 탐색공간을 훑기엔 턱없이 부족. 즉 <b>'교차점'(휴리스틱이 CP를 역전)은 없고, N이 커질수록 CP-SAT가 우위</b>지만 이는 이제 <b>공정한 결과</b>다(예전의 '디코더가 GA/SA를 굶긴' 인공적 붕괴와 다름). 과거 N=50 SA −3.0% → 현재 −26.7%로 급반등한 것이 그 증거.</li>
+  <li><b>③ SCIL ≈ CP-SAT (통계적 동급).</b> 전 8셀에서 SCIL−CP 차이는 −0.7~+1.1%로 시드 노이즈 이내. SCIL은 내부에서 SA 초안을 CP-SAT에 warm-start하므로 CP-SAT 품질을 사실상 그대로 따라간다. '몇 셀 우세'를 세는 것은 노이즈라 무의미.</li>
+  <li><b>④ 풀링 효과: 공용 ≥ 블록, 단 작고 N이 클수록 사라진다.</b> block/pool 대기 비율은 N=20 1.08~1.13배, N=50 1.01~1.11배, N=100 거의 1.00. CP-SAT 기준 +12.6%(N=20)→+6.3%(N=50)→+5.0%(N=100). 큐잉이론 "한 줄 서기" 방향은 맞으나, <b>블록 turnover 미적용 탓에 공용 우위가 과대평가</b>됐을 수 있고 블록의 현실 장점(팀·장비 고정)은 모델 밖(⑨).</li>
+  <li><b>⑤ 위기 모드(방 12→8): 대기 급증.</b> baseline +21% · CP-SAT +30% · SA +38% · GA +25% · SCIL +30%(알고리즘마다 다름, 평균 ~29%). 자원 33% 감소가 대기로 증폭.</li>
+  <li><b>⑥ 가동률·잔업 트레이드오프(가벼운 비용 아님).</b> CP-SAT는 대기를 줄이는 대신 makespan을 늘리고(N=100 공용 baseline 1,300 → CP-SAT 1,375분, <b>+75분·+5.8%</b>) 초과근무(820→895분, +75분)·가동률(0.585→0.553)을 악화시킨다. "대기 최소 일정 ≠ 가동률 최대 일정"이며, 인력위기 병원에서 잔업 추가는 결코 가벼운 트레이드오프가 아니다.</li>
+</ol>
+<div class="callout c-warn"><b>공정성 주석(중요 — 사용자 지적 반영):</b> 처음엔 공유 디코더가 느려(N=100 1회 ~2,100ms) GA가 세대 단위 시간체크로 N=100에서 237초를 쓰고도 0~2세대, SA는 7회밖에 못 돌아 <b>메타휴리스틱이 사실상 굶주린 불공정 비교</b>였다. 이를 바로잡아 디코더를 event-driven+prefix-sum으로 <b>45× 가속</b>(2,100ms→46ms, 산출 스케줄·총대기 비트단위 동일, 167테스트 통과)했다. 그 결과 모든 알고리즘이 동일 15초 예산에서 공정 비교되고(실행시간도 전부 ~15초로 정상화 — GA 237초 사라짐), <b>N=50 SA가 −3%→−27%로 급반등</b>해 "설정 탓이었다"는 지적이 옳았음이 확인됐다. 다만 N=100에선 고속 디코더로도 GA 2세대·SA 323회뿐이라 CP-SAT가 <b>공정하게도</b> 우위를 지킨다.</div>
+<div class="callout c-key"><b>환자 1명당 평균 대기(사용자 요청 지표):</b> N=50 공용·정상에서 한 환자가 그날 평균적으로 기다리는 시간 — baseline 234분 → CP-SAT 164분(약 <b>2.7시간</b>). 대기는 환자마다 편차가 커서(seed=42 표본: CP-SAT 평균 160분·표준편차 133분·중앙값 136분·<b>최대 445분</b>), 일부 환자는 7시간 넘게 기다린다. 좋은 일정은 평균뿐 아니라 이 '최악 대기'도 줄인다.</div>
+
+<h2 class="sec" id="s8">⑧ 논문 보고값과의 비교</h2>
+<table>
+  <tr><th>논문</th><th>그들의 결과</th><th>우리 결과</th><th>비교 판정</th></tr>
+  <tr><td>Guo et al. 2026 (C&amp;IE, 3단계 무대기)</td><td>CP 75/75 최적 · GA gap 0~7.5%(유사 규모 1.2~3.9%) · ACO 0~12%</td><td>유사 규모(N=20) GA gap <b>+0.7%(동급)</b> → +16%(N=50) → +30%(N=100)</td><td class="good">패턴 재현 ✓ — 유사 규모에서 동급(+0.7% vs 그들 1.2~3.9%). 대규모 gap은 GA가 15초에 약 2세대뿐이라 수렴 부족(범용 GA·예산 한계)</td></tr>
+  <tr><td>Ghandehari &amp; Kianfar 2022 (AMM)</td><td>"환자 대기비용이 최민감 목적" · CP 최적 3~45초(15~30수술)</td><td>Σwait 주목적 채택 · CP 최선해 15초 내(60작업)</td><td class="good">권고 일치 ✓ · 시간 동일 차수 ✓</td></tr>
+  <tr><td>Lopes et al. 2025 (JMIR)</td><td>단순 HC가 SA를 이김 — "좋은 초기해 + 단순 탐색"</td><td>공정 재실험 후에도 N=100에서 SA가 그리디 대비 −2.1%에 그침(수렴 부족)</td><td class="good">교훈 공명 ✓ (수치 단위 달라 직접 비교 불가)</td></tr>
+  <tr><td>Gür et al. 2019 (MDPI)</td><td>수기 52% → 모델 70~95% <b>가동률</b>(가동률이 목적)</td><td>우리 CP-SAT 가동률은 baseline보다 약간 낮음(0.553 vs 0.585)</td><td class="bad">직접 비교 불가 — 목적이 다름(대기 최소 ↔ 가동률 최대). 트레이드오프 증거로만 인용</td></tr>
+  <tr><td>IHTC 2024 3위 Twente (arXiv:2511.04685, 2025.11)</td><td>SA→CP warm-start <b>아이디어</b> 출처(단 Gurobi 사용). 대회는 수술·입원·간호 통합 문제로 우리와 <b>부분 겹침</b></td><td>SCIL ≈ CP-SAT (차이가 시드 노이즈 이내)</td><td>아이디어 차용(검증된 패턴 이식 아님). SCIL은 내부에서 CP-SAT를 호출하므로 <b>독립 알고리즘 비교가 아님</b></td></tr>
+</table>
+<div class="callout c-note"><b>비교의 정직한 한계:</b> 절대 수치는 목적함수·단위·인스턴스가 달라 비교 불가. 비교한 것은 <b>상대 격차의 구조</b>(CP vs 메타휴리스틱 gap, 방향성, 시간 차수)다. 또 그들의 gap은 "증명된 최적 대비", 우리의 gap은 "CP-SAT 15초 최선해 대비"다(N≥50은 최적 증명 미완).</div>
+
+<h2 class="sec" id="s9">⑨ 한계 (반드시 함께 읽기)</h2>
+<ul>
+  <li>과별 전문의 수 = 홈페이지 수동집계 <b>추정치</b> · 수술시간 분포 = 문헌 기반 <b>보정치</b> — 병원 실데이터 아님(가상 환자).</li>
+  <li>응급 수술 미고려 · 수술시간 결정론적(변동성 없음) — 조사 논문 5편과 공통 한계.</li>
+  <li>블록 모드의 현실 편익(전담팀 숙련도·장비 셋업)은 모델 미반영 — 풀링 우위 해석 시 주의.</li>
+  <li>SCIL은 "같은 예산에서 CP-SAT와 동급 + 빡빡할 때 유리"까지만 주장(항상 우월 주장 금지 — 하한 보장일 뿐).</li>
+  <li>블록 모드의 turnover는 전역 room 풀에만 적용되고 과별 orblock 자원에는 미적용 — 블록 시나리오가 물리 현실보다 약간 느슨하게 모델링됨(5개 알고리즘이 같은 모델을 보므로 알고리즘 간 비교는 공정; 풀-블록 격차만 블록에 약간 유리한 방향의 편향).</li>
+  <li><b>모델 범위(중요):</b> 본 모델은 <b>이미 제주대에 수용된 환자</b>의 하루 일정만 다룬다. 도외 전원·미수술 환자는 모델링하지 않으므로, Σwait는 "수용된 환자의 일정 품질" 지표일 뿐 <b>"도외 유출 감소"를 직접 입증하지 않는다.</b></li>
+  <li><b>GA/SA 수렴 한계:</b> 공유 디코더는 45× 가속으로 병목을 제거했다(⑦ 공정성 주석). 그럼에도 N=100에선 15초에 GA 약 2세대·SA 약 323회뿐이라 수렴이 부족하다. 따라서 대형 N의 GA/SA 열위는 '디코더 탓'이 아니라 '메타휴리스틱이 300작업을 15초에 수렴 못함'이라는 <b>공정한 한계</b>다 — 더 긴 예산이나 N비례 파라미터(pop_size·max_iters 축소)면 좁혀질 수 있다(미검증).</li>
+</ul>
+
+<h2 class="sec" id="s10">⑩ 재현 방법</h2>
+<pre># 1) 테스트 (167개)
+python -m pytest backend/tests -q
+
+# 2) 실험 그리드 재현 (120런, 약 25분 — 고속 디코더 적용)
+python -m backend.scripts.run_jnuh_experiments
+# → .omc/ultragoal/results/jnuh_results.{json,csv}
+
+# 3) 인스턴스만 만들어 보기
+python -c "from backend.app.data import generate_jnuh_instance as g; \
+print(g(n_patients=20, seed=42, dedicated_blocks=True).resource_capacities)"</pre>
+<p class="mini">코드: backend/app/data.py(generate_jnuh_instance) · backend/app/scil.py · backend/scripts/run_jnuh_experiments.py · 과정 기록: .omc/ultragoal/ (goals.json, ledger.jsonl, notes/G1·G5)</p>
+
+<div class="foot">
+  관련 문서: <b>easy-explainer.html</b>(쉬운 설명) · 근거자료_대기시간_목적함수.html(목적함수 근거) · 논문정리_수술스케줄링_5편비교.html(논문 5편 상세) · scheduling-handbook.html(알고리즘 교과서)
+</div>
+
+</div>
+</body>
+</html>

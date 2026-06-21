@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>왜 OR-Tools? 왜 CP-SAT? — 도구 선택 근거</title>
+<style>
+  :root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--bg:#fffdf7;
+    --blue:#2563eb;--bluebg:#eff6ff;--green:#16a34a;--greenbg:#f0fdf4;
+    --amber:#d97706;--amberbg:#fffbeb;--red:#dc2626;--redbg:#fef2f2;
+    --violet:#7c3aed;--violetbg:#f5f3ff;--teal:#0d9488;--tealbg:#f0fdfa;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","맑은 고딕",sans-serif;
+    line-height:1.75;font-size:16.5px;}
+  .wrap{max-width:880px;margin:0 auto;padding:36px 22px 90px;}
+  h1{font-size:30px;text-align:center;margin:8px 0 6px;letter-spacing:-1px;}
+  .sub{text-align:center;color:var(--muted);font-size:15px;margin-bottom:30px;}
+  h2{font-size:23px;margin:46px 0 12px;padding-bottom:8px;border-bottom:3px solid var(--line);}
+  h2 .n{display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;border-radius:8px;
+    background:var(--blue);color:#fff;font-size:16px;margin-right:8px;vertical-align:2px;}
+  .card{background:#fff;border:2px solid var(--line);border-radius:14px;padding:16px 22px;margin:14px 0;}
+  code{background:#eef2f7;border-radius:5px;padding:1px 6px;font-size:14px;font-family:Consolas,monospace;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:#fff;
+    border:2px solid var(--line);border-radius:12px;overflow:hidden;}
+  th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  tr:last-child td{border-bottom:none;}
+  .pick{background:var(--greenbg);}
+  .yes{color:var(--green);font-weight:800;}
+  .no{color:var(--red);font-weight:800;}
+  .maybe{color:var(--amber);font-weight:800;}
+  .tree{font-family:Consolas,monospace;font-size:14.5px;line-height:1.9;background:#0f172a;color:#e2e8f0;
+    border-radius:12px;padding:16px 20px;overflow-x:auto;}
+  .tree .hi{color:#86efac;font-weight:700;}
+  .reason{display:flex;gap:14px;margin:12px 0;align-items:flex-start;}
+  .reason .num{flex:0 0 34px;height:34px;border-radius:50%;background:var(--violet);color:#fff;
+    font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .reason .body{flex:1;}
+  .reason .body b{color:var(--violet);}
+  .callout{border-radius:12px;padding:14px 20px;margin:16px 0;font-size:15px;}
+  .c-note{background:var(--amberbg);border:2px solid #fde68a;}
+  .c-key{background:var(--tealbg);border:2px solid #99f6e4;}
+  .foot{margin-top:46px;padding-top:16px;border-top:2px solid var(--line);color:var(--muted);font-size:13.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>🛠️ 왜 OR-Tools를, 그중에서도 왜 CP-SAT를 골랐나</h1>
+<p class="sub">수술 스케줄링(RCPSP)을 풀 도구를 고른 근거 · 고려한 트레이드오프 정리</p>
+
+<h2><span class="n">1</span>왜 OR-Tools인가</h2>
+<div class="card">
+  <p><b>OR-Tools = 구글이 만든 무료·오픈소스 "최적화 공구함"</b>입니다. 여러 종류의 최적화 솔버(도구)를 하나의 라이브러리에 묶어 제공해요.</p>
+  <p>이걸 고른 이유:</p>
+  <ul style="margin:6px 0 0;">
+    <li><b>무료·오픈소스</b> — 상용 솔버(Gurobi·CPLEX)는 비싼 라이선스가 필요. 학생 프로젝트에 결정적.</li>
+    <li><b>성숙·검증됨</b> — 산업·연구에서 널리 쓰이는 신뢰받는 라이브러리.</li>
+    <li><b>필요한 도구가 다 들어있음</b> — 특히 우리에게 꼭 필요한 <b>CP-SAT</b>가 포함.</li>
+    <li><b>파이썬에서 바로 사용</b> — <code>pip install ortools</code> 후 모델만 적으면 끝.</li>
+  </ul>
+</div>
+
+<h2><span class="n">2</span>OR-Tools 안에는 어떤 도구들이 있나</h2>
+<div class="tree">OR-Tools <span style="color:#94a3b8">(공구함)</span>
+ ├─ <span class="hi">CP-SAT</span> <span style="color:#94a3b8">← 우리가 고른 것 (제약 프로그래밍)</span>
+ ├─ 선형해법 MIP/LP <span style="color:#94a3b8">(GLOP·SCIP·CBC — 선형 최적화)</span>
+ ├─ 라우팅 솔버 <span style="color:#94a3b8">(차량경로·TSP 배달 문제)</span>
+ └─ 그래프 알고리즘 <span style="color:#94a3b8">(최대유량·최소비용흐름·매칭)</span></div>
+<p style="color:var(--muted);font-size:14.5px;">우리는 이 중 <code>from ortools.sat.python import cp_model</code> 로 <b>CP-SAT 부분만</b> 꺼내 썼습니다.</p>
+
+<h2><span class="n">3</span>우리 문제에 맞는 후보 비교</h2>
+<p>수술 스케줄링은 <b>RCPSP(자원제약 프로젝트 스케줄링)</b> 문제입니다. 이 모양에 맞는 후보만 추리면:</p>
+<table>
+  <tr><th>후보</th><th>우리 문제 적합성</th><th>트레이드오프</th></tr>
+  <tr class="pick">
+    <td><b>CP-SAT</b><br>(제약 프로그래밍)</td>
+    <td class="yes">✅ 선택</td>
+    <td>스케줄링 전용 부품 내장 + 조합문제에 강함 + 무료 + 빠른 anytime 해. <br><span style="color:var(--muted)">단, 순수 선형(비용·흐름) 문제엔 MIP보다 약할 수 있음</span></td></tr>
+  <tr>
+    <td><b>MIP / 선형해법</b></td>
+    <td class="maybe">△ 가능하나 번거로움</td>
+    <td>선형·흐름 문제의 챔피언, 최적 증명에 강함. <br><span style="color:var(--muted)">단 "겹침 금지" 류 제약을 <code>big-M</code> 보조트릭으로 끼워야 해 모델이 지저분·비대해지고, 최강 솔버는 유료</span></td></tr>
+  <tr>
+    <td>라우팅 솔버</td>
+    <td class="no">❌ 부적합</td>
+    <td>차량 경로·배달(TSP) <b>전용</b> — 우리 문제 모양이 아님</td></tr>
+  <tr>
+    <td>그래프 알고리즘</td>
+    <td class="no">❌ 부적합</td>
+    <td>최대유량·매칭 <b>전용</b> — 스케줄링은 단일 흐름문제가 아님</td></tr>
+</table>
+<p style="color:var(--muted);font-size:14.5px;">→ 라우팅·그래프는 <b>문제 모양 자체가 안 맞아</b> 탈락. 진짜 경쟁은 <b>CP-SAT vs MIP</b>였습니다.</p>
+
+<h2><span class="n">4</span>CP-SAT를 고른 결정적 이유 5가지</h2>
+
+<div class="card">
+  <div class="reason"><div class="num">1</div><div class="body">
+    <b>스케줄링 "전용 부품"이 내장돼 있다 ⭐ (가장 큰 이유)</b><br>
+    CP-SAT엔 <code>IntervalVar</code>(시간 구간)·<code>AddCumulative</code>(자원 용량)·<code>AddNoOverlap</code>(겹침 금지)가 스케줄링용으로 처음부터 들어있다. "수술실 12개 동시 초과 금지"가 <code>AddCumulative</code> <b>한 줄</b>로 자연스럽게 표현된다.<br>
+    <span style="color:var(--muted)">↔ MIP라면 "A가 먼저 또는 B가 먼저" 같은 둘 중 하나(disjunction) 제약을 big-M로 끼워넣어야 해 변수가 많아지고 모델이 커진다.</span></div></div>
+
+  <div class="reason"><div class="num">2</div><div class="body">
+    <b>우리 문제의 핵심이 "조합 결정(순서)"이다</b><br>
+    수술을 어떤 순서로 끼울지가 본질인데, 이런 조합·논리 추론은 CP/SAT(전파 + 충돌학습)가 가장 잘하는 영역이다. MIP는 선형 구조에 강하지 순수 순서 결정엔 상대적으로 약하다.</div></div>
+
+  <div class="reason"><div class="num">3</div><div class="body">
+    <b>무료·오픈소스 💰</b><br>
+    CP-SAT는 공짜. MIP의 최강 솔버(Gurobi·CPLEX)는 비싼 상용 라이선스가 필요하고, 무료 대안(CBC·SCIP)은 더 약하다. 학생 프로젝트엔 결정적.</div></div>
+
+  <div class="reason"><div class="num">4</div><div class="body">
+    <b>빠른 "지금까지 최선" 해 (anytime)</b><br>
+    CP-SAT는 내부 LNS 덕에 좋은 해를 빨리 찾는다. 우리는 15초로 끊어 쓰므로(최적 증명까진 안 감) 이 특성이 딱 맞았다.</div></div>
+
+  <div class="reason"><div class="num">5</div><div class="body">
+    <b>논문 표준이다</b><br>
+    우리가 조사한 수술 스케줄링 논문들(Guo 2026, Ghandehari &amp; Kianfar 2022)도 CP 계열을 표준으로 쓴다. 같은 도구를 써야 비교가 정당해진다.</div></div>
+</div>
+
+<h2><span class="n">5</span>정직한 트레이드오프</h2>
+<div class="callout c-note">
+  <b>MIP가 나쁜 게 아니다.</b> 우리 문제도 MIP로 풀 수 있다. 다만 "수술실 겹침 금지" 같은 <b>스케줄링 제약을 표현하기엔 CP-SAT가 훨씬 자연스럽고, 무료이며, anytime 해가 좋아서</b> 골랐을 뿐이다.<br><br>
+  한 줄로: <b>MIP = "선형·비용 문제의 챔피언", CP-SAT = "조합·스케줄 문제의 챔피언".</b> 우리 건 후자라 CP-SAT.
+</div>
+
+<h2><span class="n">6</span>프로젝트 맥락 — 비교 구도에서의 자리</h2>
+<div class="card">
+  우리 실험 구도는 <b>baseline / CP-SAT / GA / SA</b>였다. 여기서 <b>CP-SAT는 "최적을 지향하는 정확해 대표(gold standard)"</b> 자리로, GA·SA 같은 <b>휴리스틱과 대비</b>시키는 역할이다. 그 자리에 MIP를 넣을 수도 있었지만 — <b>스케줄링 적합성 + 무료 + 논문 표준</b> 때문에 CP-SAT가 더 나은 선택이었다.
+</div>
+
+<div class="callout c-key">
+  <b>결론 한 장:</b><br>
+  ① 라우팅·그래프는 문제 모양이 안 맞아 탈락 →<br>
+  ② 진짜 경쟁은 CP-SAT vs MIP →<br>
+  ③ <b>CP-SAT 승리 = 스케줄링 전용 부품 + 조합 강함 + 무료 + anytime + 논문 표준</b>
+</div>
+
+<p class="foot">※ OR-Tools = 구글의 무료 최적화 라이브러리. CP-SAT는 그 안의 한 솔버(제약 프로그래밍). 우리 코드는 엔진을 만든 게 아니라 <code>cp_model</code>을 가져와 "문제(변수·제약·목적)"만 적고 <code>Solve()</code>를 호출한다. · 관련: 상세과정 페이지 ⑤(알고리즘 5종)</p>
+
+</div>
+</body>
+</html>

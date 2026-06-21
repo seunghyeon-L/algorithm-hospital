@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>병원 수술 시간표 대작전 — 쉬운 설명</title>
+<style>
+  :root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--bg:#fffdf7;
+    --blue:#2563eb;--bluebg:#eff6ff;--green:#16a34a;--greenbg:#f0fdf4;
+    --amber:#d97706;--amberbg:#fffbeb;--red:#dc2626;--redbg:#fef2f2;
+    --violet:#7c3aed;--violetbg:#f5f3ff;--teal:#0d9488;--tealbg:#f0fdfa;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","맑은 고딕",sans-serif;
+    line-height:1.85;font-size:18px;}
+  .wrap{max-width:820px;margin:0 auto;padding:36px 22px 90px;}
+  h1{font-size:34px;text-align:center;margin:10px 0 6px;letter-spacing:-1px;}
+  .sub{text-align:center;color:var(--muted);font-size:16px;margin-bottom:30px;}
+  h2{font-size:25px;margin:52px 0 14px;padding-bottom:8px;border-bottom:3px solid var(--line);}
+  .big{font-size:21px;font-weight:700;}
+  .card{background:#fff;border:2px solid var(--line);border-radius:18px;padding:18px 24px;margin:16px 0;}
+  .speech{border-radius:18px;padding:16px 22px;margin:14px 0;font-size:18px;}
+  .q{background:var(--amberbg);border:2px solid #fde68a;}
+  .a{background:var(--bluebg);border:2px solid #bfdbfe;}
+  .hero{background:var(--greenbg);border:3px solid #86efac;border-radius:20px;padding:22px 26px;margin:20px 0;text-align:center;}
+  .hero .num{font-size:46px;font-weight:800;color:var(--green);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:16px;background:#fff;border-radius:12px;overflow:hidden;border:2px solid var(--line);}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;}
+  th{background:#f1f5f9;}
+  tr:last-child td{border-bottom:none;}
+  .bar{height:26px;border-radius:8px;color:#fff;font-size:14px;font-weight:700;
+    display:flex;align-items:center;padding:0 10px;margin:5px 0;white-space:nowrap;}
+  .mini{font-size:14.5px;color:var(--muted);}
+  .player{display:flex;gap:14px;align-items:flex-start;margin:14px 0;}
+  .player .face{font-size:38px;line-height:1.2;}
+  .player .name{font-weight:800;font-size:18px;}
+  .foot{margin-top:50px;padding-top:16px;border-top:2px solid var(--line);color:var(--muted);font-size:14px;}
+  a{color:var(--blue);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>🏥 병원 수술 시간표 대작전</h1>
+<p class="sub">제주대학교병원 이야기로 배우는 "스케줄링 알고리즘" — 초등학생도 OK!</p>
+
+<h2>1. 무슨 문제예요? 🤔</h2>
+<div class="card">
+  <p>제주도에서 제일 큰 병원에는 <b>수술방이 12개</b> 있어요. 그런데 수술을 하려면 방만 있으면 안 돼요!</p>
+  <p>🛌 <b>수술방</b> 12개 · 💉 <b>마취 선생님</b> 8명 · 🧑‍⚕️ <b>수술 선생님</b>은 분야별로 정해져 있어요.</p>
+  <p>특히 <b>가슴(흉부) 수술 선생님은 딱 1명</b>, <b>성형 수술 선생님도 딱 1명</b>뿐이에요. 선생님을 더 데려오고 싶어도, 제주도는 섬이라 의사 선생님 구하기가 정말 어려워요. 😢</p>
+  <p class="big">그래서 환자들이 <span style="color:var(--red)">오래 기다려야</span> 해요. 우리가 할 일: <span style="color:var(--blue)">선생님과 방은 그대로 두고, "시간표"만 똑똑하게 짜서 기다림을 줄이자!</span></p>
+</div>
+
+<div class="speech q">❓ "기다리는 게 그렇게 큰 문제예요?"</div>
+<div class="speech a">💡 네! 기다리면 속상한 것만이 아니라 <b>더 아파질 수 있어요</b>. 연구에 따르면 (암 종류마다 다르지만) 암 수술이 4주 늦어질 때마다 위험이 대략 6~8%씩 커진다고 해요. 그래서 "기다리는 시간"을 줄이는 게 우리 목표(목적함수)예요.</div>
+
+<h2>2. 시간표 짜기 선수 5명을 소개합니다! 🏁</h2>
+<div class="card"><div class="player"><div class="face">🤖</div><div>
+  <div class="name">줄서기 로봇 (baseline)</div>
+  온 순서대로 빈 방에 척척 넣어요. <b>엄청 빠르지만</b>(0.1초!) 깊게 생각하지 않아서 기다림이 많아요.</div></div></div>
+<div class="card"><div class="player"><div class="face">🧠</div><div>
+  <div class="name">수학 천재 (CP-SAT)</div>
+  "이 수술을 먼저 하면? 저걸 미루면?" 수많은 경우를 <b>수학으로 따져서</b> 가장 좋은 시간표를 찾아요. 안 되는 경우는 똑똑하게 지워버려요(가지치기!).</div></div></div>
+<div class="card"><div class="player"><div class="face">🧬</div><div>
+  <div class="name">진화 선수 (GA, 유전 알고리즘)</div>
+  시간표 100개를 만들어 놓고, 좋은 것끼리 <b>섞고(교배) 살짝 바꿔서(돌연변이)</b> 점점 더 좋은 시간표로 진화시켜요.</div></div></div>
+<div class="card"><div class="player"><div class="face">🔥</div><div>
+  <div class="name">대장장이 (SA, 담금질 기법)</div>
+  뜨거울 땐 시간표를 <b>과감하게 막 바꿔보고</b>, 식을수록 신중하게 다듬어요. 쇠를 달궜다 식히는 대장간에서 아이디어를 얻었대요!</div></div></div>
+<div class="card" style="border-color:#c4b5fd;background:var(--violetbg)"><div class="player"><div class="face">🤝</div><div>
+  <div class="name">콤비 선수 (SCIL) — 우리가 새로 만든 선수!</div>
+  대장장이가 빠르게 <b>초안</b>을 만들면 → 수학 천재가 그걸 받아서 <b>완성</b>해요. "대장장이 초안을 수학 천재에게 넘긴다"는 생각은 여러 하이브리드 방법에서 흔히 써요 — 의료 분야에선 2024년 대회 3등 팀(네덜란드)이 비슷한 조합을 썼는데, 그들은 다른 유료 도구도 같이 썼고 우리는 우리 도구로 <b>직접</b> 만든 거예요(대회 입상 방법을 그대로 가져온 건 아니에요).</div></div></div>
+
+<h2>3. 대회 결과! 🏆</h2>
+<p>환자 50명의 하루 수술 시간표를 짜게 했어요. (모두 똑같이 <b>15초</b>의 생각 시간을 줬어요)</p>
+<div class="card">
+  <p class="mini">총 기다린 시간 (짧을수록 좋아요!)</p>
+  <div class="bar" style="width:100%;background:#94a3b8;">🤖 줄서기 로봇 — 195시간</div>
+  <div class="bar" style="width:82%;background:#fb923c;">🧬 진화 선수 — 159시간</div>
+  <div class="bar" style="width:73%;background:#f87171;">🔥 대장장이 — 143시간 (많이 줄임!)</div>
+  <div class="bar" style="width:70%;background:#a78bfa;">🤝 콤비 선수 — 137시간</div>
+  <div class="bar" style="width:70%;background:#34d399;">🧠 수학 천재 — 137시간 🏆</div>
+  <p class="mini">※ 환자 50명·공용 수술방·평소 모드, 시드 3개 평균. 1·2·3등(수학 천재·콤비·대장장이)이 거의 붙어 있어요. 이번엔 컴퓨터 계산을 45배 빠르게 고쳐서 <b>모든 선수가 똑같이 딱 15초만</b> 썼어요 — 그랬더니 대장장이(SA)가 예전(189시간)보다 확 좋아졌어요!</p>
+</div>
+
+<div class="hero">
+  <div>선생님도 방도 <b>하나도 안 늘렸는데</b>, 시간표만 잘 짰더니…</div>
+  <div class="num">기다림 약 30% 감소!</div>
+  <div>= 환자 50명이 <b>58시간</b>을 덜 기다렸어요 (195시간 → 137시간)</div>
+</div>
+
+<div class="card" style="background:var(--bluebg);border-color:#bfdbfe">
+  <p>👤 <b>환자 한 명으로 보면?</b> 한 명이 그날 평균 기다리는 시간이 <b>줄서기 로봇은 약 3.9시간</b>인데 <b>수학 천재는 약 2.7시간</b>으로 줄어요. 환자마다 차이가 커서 어떤 사람은 <b>7시간 넘게</b> 기다리기도 하는데, 좋은 시간표는 이 "제일 오래 기다리는 사람"도 줄여줘요.</p>
+</div>
+
+<h2>4. 재미있는 발견 3가지 🔍</h2>
+<div class="card">
+  <p>🅰️ <b>환자가 적을 땐 다 비슷, 많아지면 "수학 천재·콤비"만 끝까지 잘해요.</b><br>
+  (다 같이 쓰는 방 기준) 환자 20명일 땐 다섯 선수가 다 비슷했어요(로봇보다 28~31% 좋음). 환자 100명이 되면 진화 선수·대장장이는 <b>시간이 모자라 충분히 못 풀어서</b> 로봇과 비슷해지고(7%·2%), 수학 천재·콤비만 29% 가까이 줄여요. <b>문제가 어려울수록, 그리고 시간이 빠듯할수록</b> 똑똑한 방법이 중요해요! (예전엔 컴퓨터 계산이 느려서 차이가 더 심했는데, 45배 빠르게 고치니 환자 50명에선 대장장이도 27%까지 따라왔어요.)</p>
+  <p>🅱️ <b>"한 줄 서기"가 이겨요.</b><br>
+  마트 계산대처럼, 수술방 12개를 <b>다 같이 쓰는 것(공용)</b>이 과별로 <b>나눠 쓰는 것(전용)</b>보다 기다림이 적었어요 — 수학 천재의 시간표 기준으로, 나누면 기다림이 4~13% 늘었거든요. 줄을 하나로 합치면 빈 계산대가 생기자마자 바로 다음 사람이 가니까요! (선수에 따라 차이는 조금씩 달랐어요.) <b>단, 진짜 병원에서는 과마다 팀을 정해 두면 손발이 잘 맞아 더 빨라지는 장점도 있어서, 공용이 무조건 정답은 아니에요.</b></p>
+  <p>🅲️ <b>방이 줄면 기다림이 확 늘어요.</b><br>
+  의사 선생님들이 부족해져서 수술방을 12개에서 8개로 줄였더니(실제로 2024년에 있었던 일이에요) 기다림이 <b>확 늘었어요</b> — 수학 천재 기준 30%, 선수마다 21~38%(평균 약 29%)! 자원이 빡빡할수록 시간표 짜기가 더욱 중요해져요.</p>
+</div>
+
+<div class="speech q">❓ "다른 나라 연구랑 비교하면 우리 결과는 잘 나온 거예요?"</div>
+<div class="speech a">💡 네! 2026년 중국 병원 연구(Guo 팀)도 똑같이 "환자가 많아지면 수학 천재(CP)가 진화 선수(GA)보다 낫다"고 했어요. 비슷한 (작은) 크기 문제에서 그들의 GA는 천재보다 0~7.5%만 뒤졌는데, 우리도 (계산을 공정하게 고친 뒤) 작은 문제에선 1%도 차이 안 났어요(거의 동점). 큰 문제에서만 천재가 앞서요 — 세계 연구와 같은 그림이에요! ✓</div>
+
+<h2>5. 한 줄 정리 ✏️</h2>
+<div class="card" style="background:var(--tealbg);border-color:#99f6e4">
+  <p class="big" style="text-align:center">"의사 선생님과 수술방을 못 늘려도,<br>시간표를 <span style="color:var(--teal)">수학으로 똑똑하게</span> 짜면<br>환자들의 기다림을 <span style="color:var(--teal)">3분의 1</span>이나 줄일 수 있다!"</p>
+</div>
+
+<p class="foot">※ 이 실험은 제주대학교병원의 공개 정보와 <b>어림값</b>(수술방 12개는 공개값, 분야별 선생님 수·마취 선생님 8명은 홈페이지를 보고 어림한 추정치)을 바탕으로 컴퓨터로 만든 가상 환자들로 진행했어요. 진짜 환자 정보는 쓰지 않았어요. · "공용 풀·블록타임" 같은 말이 궁금하면 👉 <b>용어사전 페이지</b>(glossary-explainer.html), 자세한 과정은 👉 <b>상세과정 페이지</b>(detailed-process.html)를 보세요!</p>
+
+</div>
+</body>
+</html>

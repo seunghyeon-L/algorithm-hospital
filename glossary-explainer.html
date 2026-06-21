@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>용어사전 — 공용 풀·블록타임 쉽게 풀어쓰기</title>
+<style>
+  :root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--bg:#fffdf7;
+    --blue:#2563eb;--bluebg:#eff6ff;--green:#16a34a;--greenbg:#f0fdf4;
+    --amber:#d97706;--amberbg:#fffbeb;--violet:#7c3aed;--violetbg:#f5f3ff;
+    --teal:#0d9488;--tealbg:#f0fdfa;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","맑은 고딕",sans-serif;
+    line-height:1.8;font-size:17px;}
+  .wrap{max-width:840px;margin:0 auto;padding:36px 22px 90px;}
+  h1{font-size:31px;text-align:center;margin:8px 0 6px;letter-spacing:-1px;}
+  .sub{text-align:center;color:var(--muted);font-size:15px;margin-bottom:26px;}
+  h2{font-size:23px;margin:48px 0 12px;padding-bottom:8px;border-bottom:3px solid var(--line);}
+  .term{background:#fff;border:2px solid var(--line);border-radius:16px;padding:6px 22px 18px;margin:18px 0;}
+  .term h3{font-size:20px;margin:16px 0 10px;color:var(--violet);}
+  .row{display:flex;gap:12px;margin:9px 0;align-items:flex-start;}
+  .tag{flex:0 0 64px;font-size:13px;font-weight:800;padding:3px 0;text-align:center;border-radius:8px;}
+  .t-def{background:var(--bluebg);color:var(--blue);}
+  .t-ex{background:var(--amberbg);color:var(--amber);}
+  .t-mo{background:var(--greenbg);color:var(--green);}
+  .row .body{flex:1;}
+  .struct{background:#fff;border:2px solid var(--line);border-radius:16px;padding:18px 22px;margin:16px 0;}
+  .floor{border-left:5px solid var(--teal);padding:6px 0 6px 16px;margin:14px 0;}
+  .floor b{color:var(--teal);}
+  .callout{background:var(--tealbg);border:2px solid #99f6e4;border-radius:14px;padding:14px 20px;margin:18px 0;}
+  a{color:var(--blue);}
+  .foot{margin-top:46px;padding-top:16px;border-top:2px solid var(--line);color:var(--muted);font-size:13.5px;}
+  .mini{font-size:14px;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>📖 용어사전 — 어려운 말 쉽게 풀기</h1>
+<p class="sub">"공용 풀이 뭐지? 블록타임은?" — 전문용어를 생활 비유로 풀어 설명합니다<br>(상세과정 페이지 ②의 보충 설명)</p>
+
+<div class="callout"><b>이 페이지를 보는 법:</b> 각 단어마다 <span class="tag t-def" style="display:inline-block">정의</span> 한 줄 뜻 → <span class="tag t-ex" style="display:inline-block">비유</span> 생활 속 예시 → <span class="tag t-mo" style="display:inline-block">모델</span> 우리 실험에서의 의미, 세 칸으로 설명합니다.</div>
+
+<h2>1. 핵심 용어 8개</h2>
+
+<div class="term">
+  <h3>① 중앙수술부</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">병원 안 수술실들을 한데 모아, 예약·배정·소독·마취과 배치까지 통합 관리하는 부서.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">대형마트 계산대 구역. 계산대 12개를 한 매니저가 통합 관리하며 어느 줄을 열지·직원을 어디 둘지 중앙에서 정한다.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">제주대병원 3층의 수술실 12개가 모두 중앙수술부 소속. 우리 모델은 이를 "room 용량 12"라는 하나의 공유 자원으로 표현.</div></div>
+</div>
+
+<div class="term">
+  <h3>② 공용 풀 (Pooled / Shared Pool)</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">수술실을 특정 과에 묶지 않고, 모든 외과계가 빈 방을 자유롭게 쓰도록 한데 묶은 상태.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">슈퍼마켓 "한 줄 서기". 계산대마다 따로 줄 서는 대신 입구에 공통 줄 하나를 세우고 빈 계산대가 나오면 맨 앞 사람이 간다 → 평균 대기가 짧아진다.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">공용 풀 시나리오(V2=pool)에서는 외과·정형 환자 누구든 빈 수술실 아무 곳에나 배정. 12개 방이 하나의 자원 묶음으로 작동.</div></div>
+</div>
+
+<div class="term">
+  <h3>③ 블록타임 배정 (Block Scheduling)</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">수술실 시간을 "덩어리(블록)"로 나눠 각 과에 미리 정기 배정하는 방식.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">학교 급식 시간표. "월 11시는 1학년, 12시는 2학년"처럼 미리 정해 두면, 1학년이 적게 와도 그 시간을 2학년이 못 쓴다. 대신 각 과 수술팀이 정기적으로 일정을 맞출 수 있다.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">블록 시나리오(V2=block)에서는 12개를 과별로 쪼갠다(외과3·정형3·신경2·산부1·비뇨1·안과1·이비1). 정형 환자는 정형 블록 3개만 쓸 수 있어, 외과 블록이 비어도 기다린다.</div></div>
+</div>
+
+<div class="term">
+  <h3>④ 과별 전용 수술실</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">특정 과만 쓰는 수술실 — 한국 대부분 병원에선 물리적 고정이 아니라 ③블록 배정이라는 운영 정책으로 구현된다.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">회의실에 "재무팀 전용" 문패를 다는 것(물리 고정) vs "화요일 오전은 재무팀 예약"이라는 규칙만 정하는 것(블록). 건물은 같고 규칙만 다르다.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">제주대병원 3층엔 "정형 전용"이라 써 붙인 방이 없다. "전용"은 배정된 블록 시간을 가리킬 뿐. 그래서 연구자들이 "전용 수술실은 물리 구조가 아니라 운영 정책의 산물"이라 말한다(<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5047985/" target="_blank">PMC5047985</a>).</div></div>
+</div>
+
+<div class="term">
+  <h3>⑤ 케이스믹스 (Case Mix)</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">일정 기간 수술실에서 처리하는 수술 종류의 구성 비율 — 어느 과 수술이 얼마나 섞였나.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">카페 주문 비율("아메리카노 40%·라떼 30%…"). 아메리카노가 많으면 머신이, 디저트가 많으면 오븐이 병목이 된다.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">환자 생성 시 어느 과를 얼마나 만들지의 비율. 전문의 수에 비례: 외과24%·정형20%·산부/안과 각12%·이비/신경 각10%·비뇨8%·<b>흉부/성형 각2%</b>(전문의 1명이라 적게 배정해 국소 병목으로).</div></div>
+</div>
+
+<div class="term">
+  <h3>⑥ 풀링 효과 (한 줄 서기 원리)</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">여러 독립 대기열을 하나로 합치면 평균 대기가 줄어드는 현상 — 자원이 노는 시간을 줄인다.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">계산대 4개에 각자 줄 서면 "내 줄만 느리고 옆 줄은 텅 빈" 불균형이 생긴다. 한 줄 서기는 이 불균형을 없애 평균 대기를 줄인다(큐잉이론).</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">공용(pool) vs 블록(block) 비교(V2)가 이 효과를 검증한다. 결과: CP-SAT 기준 공용이 블록보다 대기 <b>약 5~13% 짧음</b>(N=20 1.13배 → N=100 1.05배). 단 블록의 현실 장점(팀 숙련도·장비 셋업)은 모델 밖이라 "공용이 무조건 낫다"고 단정 금지.</div></div>
+</div>
+
+<div class="term">
+  <h3>⑦ 당일수술센터</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">입원 없이 당일 외래로 받는 간단한 수술·시술 전담 시설.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">간단한 봉합은 응급실 전체를 거칠 필요 없이 처치실에서 끝내듯, 가벼운 시술은 중앙수술부까지 안 가고 별도 공간에서 처리.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">제주대병원 2층, 비뇨·소화기·순환기·안과·이비인후·치과 경증 6개과 담당. <b>우리 연구 범위 밖</b> — 우리는 3층 중앙수술부의 외과계 메이저 수술만 다룬다.</div></div>
+</div>
+
+<div class="term">
+  <h3>⑧ 가동률 (Utilization)</h3>
+  <div class="row"><div class="tag t-def">정의</div><div class="body">수술실 가용 시간 중 실제 수술이 돌아간 비율 — 수술실이 얼마나 바빴나.</div></div>
+  <div class="row"><div class="tag t-ex">비유</div><div class="body">식당 좌석 회전율. 단 너무 꽉 채우면 주문 처리가 느려져 손님 대기가 길어진다 → 높다고 무조건 좋은 게 아니다.</div></div>
+  <div class="row"><div class="tag t-mo">모델</div><div class="body">가동률 = 총 수술시간 ÷ (수술실 수 × makespan). 흥미롭게도 CP-SAT는 대기를 줄이는 대신 가동률을 약간 희생(N=100: 0.585→0.553). "대기 최소"와 "가동률 최대"는 다르다. 주 목적 아닌 진단 지표로만 본다.</div></div>
+</div>
+
+<h2>2. 제주대병원 수술실은 정확히 어떻게 생겼나</h2>
+<div class="struct">
+  <div class="floor"><b>2층 — 당일수술센터</b><br>가벼운 수술·시술을 당일 외래로 처리(비뇨·소화기·순환기·안과·이비인후·치과). 입원 불필요 수준. <b>우리 연구 범위 밖.</b></div>
+  <div class="floor"><b>3층 — 중앙수술부(수술실 12개)</b> ← 우리 연구의 무대<br>외과계 메이저 수술을 담당하는 단일 부서. 12개 방이 하나의 부서로 통합 운영된다. 2024년 의정갈등 때 인력 부족으로 12개 중 8개만 운영했다는 보도(<a href="https://www.jejusori.net/news/articleView.html?idxno=426231" target="_blank">제주의소리 2024</a>) → 우리 "위기 모드(V3)"가 이를 재현.</div>
+  <div class="floor"><b>3층 — 분만실(별도)</b><br>산부인과 자연분만은 중앙수술부와 분리된 공간. 제왕절개 등 산부인과 수술은 중앙수술부 사용.</div>
+  <p class="mini" style="margin-top:14px">출처: <a href="https://www.jejunuh.co.kr/facfloor" target="_blank">병원 층별안내</a> · <a href="https://www.jejunuh.co.kr/treatment/jiryu/daysurgery/_/view.do" target="_blank">당일수술센터</a></p>
+</div>
+
+<div class="callout">
+  <b>🏫 한 문장 비유:</b> 교실 12개짜리 건물에 문패가 없는데, 시간표를 보면 "1~3교시는 1학년이 주로 쓴다"는 규칙이 있는 것과 같다. <b>교실(수술실)은 공유 자산이고, 과별 구분은 운영 규칙(블록)일 뿐</b>이다. 이 규칙을 없애 "빈 교실 아무나 쓰세요"로 바꾸면 <b>공용 풀</b>이 된다.<br><br>
+  그래서 우리는 "공용이 맞다/블록이 맞다"를 미리 정하지 않고, <b>둘을 실험 변인(V2)으로 직접 비교</b>했다. 큐잉이론은 공용(한 줄 서기)이 대기에 유리하다고 예측했고, 실험에서도 그 방향이 확인됐다(공용이 약 5~13% 짧음). 단 블록의 현실 장점은 모델 밖이다.
+</div>
+
+<p class="foot">※ explainer 에이전트(task #1) 산출물을 페이지화한 것입니다. 출처: 한국 OR 실태 <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5047985/" target="_blank">PMC5047985</a> · 블록 스케줄링 <a href="https://link.springer.com/article/10.1007/s10729-014-9269-z" target="_blank">Springer HCMS 2014</a> · <a href="https://www.jejunuh.co.kr/facfloor" target="_blank">제주대병원 층별안내</a> · 수술실 12→8 <a href="https://www.jejusori.net/news/articleView.html?idxno=426231" target="_blank">제주의소리 2024</a><br>👉 쉬운 전체 설명: <b>easy-explainer.html</b> · 상세 과정: <b>detailed-process.html</b></p>
+
+</div>
+</body>
+</html>

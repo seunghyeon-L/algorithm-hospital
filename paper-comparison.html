@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수술 스케줄링 논문 5편 — 상세 비교 정리</title>
+<style>
+  :root{
+    --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --card:#ffffff;
+    --p1:#4f46e5; --p1bg:#eef2ff; --p1ln:#c7d2fe;
+    --p2:#0d9488; --p2bg:#f0fdfa; --p2ln:#99f6e4;
+    --p3:#d97706; --p3bg:#fffbeb; --p3ln:#fde68a;
+    --p4:#7c3aed; --p4bg:#f5f3ff; --p4ln:#ddd6fe;
+    --p5:#e11d48; --p5bg:#fff1f2; --p5ln:#fecdd3;
+    --good:#16a34a; --goodbg:#f0fdf4; --warn:#dc2626; --warnbg:#fef2f2;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","맑은 고딕",sans-serif;
+    line-height:1.7;font-size:16px;}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 80px;}
+  header.top{text-align:center;padding:28px 0 8px;border-bottom:2px solid var(--line);margin-bottom:8px;}
+  header.top h1{font-size:30px;margin:0 0 8px;letter-spacing:-.5px;}
+  header.top p{color:var(--muted);margin:4px 0;font-size:15px;}
+  h2.sec{font-size:23px;margin:48px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--line);}
+  h3{font-size:18px;margin:22px 0 8px;}
+  p{margin:8px 0;}
+  .lead{color:var(--muted);font-size:15.5px;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{background:#f1f5f9;font-weight:600;}
+  tr:last-child td{border-bottom:none;}
+  .num{font-variant-numeric:tabular-nums;font-weight:600;}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:600;}
+  .tag-cp{background:#eef2ff;color:#4338ca;} .tag-gp{background:#ecfeff;color:#0e7490;}
+  .tag-milp{background:#fef3c7;color:#92400e;} .tag-cg{background:#f0fdf4;color:#15803d;}
+  .tag-ga{background:#f5f3ff;color:#6d28d9;} .tag-aco{background:#fff7ed;color:#9a3412;}
+  .tag-sa{background:#fff1f2;color:#be123c;} .tag-hc{background:#f0fdf4;color:#166534;}
+  .paper{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 24px 22px;margin:22px 0;overflow:hidden;}
+  .paper > .phead{margin:0 -24px 14px;padding:18px 24px;color:#fff;}
+  .p1 .phead{background:var(--p1);} .p2 .phead{background:var(--p2);} .p3 .phead{background:var(--p3);}
+  .p4 .phead{background:var(--p4);} .p5 .phead{background:var(--p5);}
+  .phead .pno{font-size:13px;opacity:.85;font-weight:600;letter-spacing:1px;}
+  .phead h2{margin:2px 0 4px;font-size:20px;border:none;padding:0;color:#fff;}
+  .phead .entitle{font-size:13.5px;opacity:.92;font-style:italic;margin:2px 0;}
+  .phead .meta{font-size:13px;opacity:.92;margin-top:4px;}
+  .phead a{color:#fff;text-decoration:underline;}
+  .oneline{font-size:16px;font-weight:600;padding:12px 16px;border-radius:10px;margin:6px 0 14px;}
+  .p1 .oneline{background:var(--p1bg);border:1px solid var(--p1ln);}
+  .p2 .oneline{background:var(--p2bg);border:1px solid var(--p2ln);}
+  .p3 .oneline{background:var(--p3bg);border:1px solid var(--p3ln);}
+  .p4 .oneline{background:var(--p4bg);border:1px solid var(--p4ln);}
+  .p5 .oneline{background:var(--p5bg);border:1px solid var(--p5ln);}
+  .block{margin:18px 0;}
+  .block > .bt{font-weight:700;font-size:15.5px;display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+  .emoji{font-size:18px;}
+  ul.clean{margin:6px 0;padding-left:22px;} ul.clean li{margin:5px 0;}
+  .callout{border-radius:10px;padding:12px 16px;margin:10px 0;font-size:14.5px;}
+  .c-warn{background:var(--warnbg);border:1px solid #fecaca;}
+  .c-good{background:var(--goodbg);border:1px solid #bbf7d0;}
+  .c-note{background:#f8fafc;border:1px solid var(--line);}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:660px){.split{grid-template-columns:1fr;}}
+  .mini{font-size:13.5px;color:var(--muted);}
+  .gl{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 20px;margin:14px 0;}
+  .gl dt{font-weight:700;margin:14px 0 2px;font-size:15.5px;}
+  .gl dt .en{color:var(--muted);font-weight:500;font-size:13px;}
+  .gl dd{margin:0 0 6px;color:#334155;font-size:14.5px;}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 22px;margin:18px 0;}
+  .toc a{color:var(--p1);text-decoration:none;} .toc a:hover{text-decoration:underline;}
+  .arrow{color:var(--good);font-weight:700;}
+  .down{color:var(--warn);font-weight:700;}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;}
+  .verified{display:inline-block;background:var(--goodbg);color:#15803d;border:1px solid #bbf7d0;
+    font-size:12px;font-weight:600;padding:2px 9px;border-radius:6px;}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:4px 14px;font-size:14.5px;margin:8px 0;}
+  .kv .k{color:var(--muted);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>수술실 스케줄링 논문 5편 — 상세 비교</h1>
+  <p>각 논문이 <b>정확히 무엇을 바꿨고</b> · <b>성능 지표가 수치로 어떻게 나왔고</b> · <b>무엇을 고려했고 무엇을 고려하지 않았는지</b></p>
+  <p><span class="verified">✓ 5편 모두 원문 PDF/본문에서 수치 직접 추출·검증</span></p>
+</header>
+
+<div class="toc">
+  <strong>목차</strong> &nbsp;
+  <a href="#tldr">① 30초 요약</a> ·
+  <a href="#glossary">② 용어 사전</a> ·
+  <a href="#p1">③ 1번 CP+GP+불확실성</a> ·
+  <a href="#p2">④ 2번 MILP·CP·열생성</a> ·
+  <a href="#p3">⑤ 3번 사례연구(원조)</a> ·
+  <a href="#p4">⑥ GA 비교 논문(3단계 무대기)</a> ·
+  <a href="#p5">⑦ SA 논문(포르투갈 실증)</a> ·
+  <a href="#matrix">⑧ 통합 비교표</a> ·
+  <a href="#synth">⑨ 관통 주제 + 우리 프로젝트</a>
+</div>
+
+<!-- ============ TLDR ============ -->
+<h2 class="sec" id="tldr">① 30초 요약</h2>
+<p class="lead">다섯 논문은 모두 "수술실 일정을 알고리즘으로 짜면 사람 손보다 얼마나 좋아지나"를 다룬다. 앞 3편은 <b>CP(제약 프로그래밍) 계열의 의료 적용</b>, 뒤 2편은 <b>정확해 vs 메타휴리스틱(GA·SA) 정면 대결</b>이다.</p>
+<table>
+  <tr><th></th><th>핵심 한 줄</th><th>대표 수치</th><th>가장 큰 공백</th></tr>
+  <tr><td><b>1번</b> CEJOR 2022</td><td>수술팀 4역할 + 수술시간 <b>불확실성</b>을 CP+목표계획법에 최초 통합</td><td>가동률 71% <span class="arrow">→</span> 82%</td><td>응급·개별 인력 수</td></tr>
+  <tr><td><b>2번</b> AMM 2022</td><td>MILP·CP·<b>열생성</b> 속도 대결 — 큰 문제는 CP 계열 승</td><td>MILP 3,600초 실패 <span class="arrow">→</span> CPCG 3분 내 최적</td><td>수술시간 고정</td></tr>
+  <tr><td><b>3번</b> MDPI 2019</td><td>실제 병원 <b>수기 일정 대비</b> CP+GP 효과를 입증 (1번의 원조)</td><td>가동률 52% <span class="arrow">→</span> 최대 95%, 초과근무 45<span class="arrow">→</span>0블록</td><td>변동·순서·인력</td></tr>
+  <tr><td><b>GA 논문</b> C&amp;IE 2026</td><td>3단계 무대기 문제에서 <b>CP가 GA·ACO·MILP 전부 격파</b></td><td>75개 전부 최적(CP) vs GA 0~7.5% 미달</td><td>응급·선호·다목표</td></tr>
+  <tr><td><b>SA 논문</b> JMIR 2025</td><td>포르투갈 실병원에서 <b>HC·SA가 수기 패널티를 사실상 0으로</b></td><td>총 패널티 695,340 <span class="arrow">→</span> HC 0 / SA 6,370</td><td>개별 인력·시간예측</td></tr>
+</table>
+
+<!-- ============ GLOSSARY ============ -->
+<h2 class="sec" id="glossary">② 용어 사전 — 쉬운 말로 먼저</h2>
+<p class="lead">아래 용어만 잡으면 다섯 편이 전부 읽힌다.</p>
+<dl class="gl">
+  <dt>제약 프로그래밍 <span class="en">CP, Constraint Programming</span></dt>
+  <dd>퍼즐 풀듯 "지켜야 할 규칙"을 선언하면, 솔버가 <b>논리적으로 후보를 좁혀가며(전파)</b> 답을 찾는 방법. 순서·자원이 얽힌 스케줄에 특히 강하고, <b>최적임을 증명</b>까지 할 수 있다. (우리 프로젝트의 CP‑SAT가 이 계열)</dd>
+  <dt>목표계획법 <span class="en">Goal Programming, GP</span></dt>
+  <dd>목표가 여러 개라 충돌할 때(비용↓+만족↑+초과근무↓), 각 목표에 <b>목표값</b>을 정하고 "벗어난 정도(편차)"의 합을 최소화. "전 과목 만점은 못 따도 모두 목표에 최대한 가깝게."</dd>
+  <dt>MILP <span class="en">혼합정수선형계획법</span></dt>
+  <dd>"이 수술을 이 방에? 예(1)/아니오(0)" 같은 결정을 0/1 변수로 놓고 <b>선형 수식</b>으로 푸는 정통 방법. 정확하지만 문제가 커지면 변수·제약이 폭발해 느려진다.</dd>
+  <dt>열생성 <span class="en">Column Generation / CPCG</span></dt>
+  <dd>후보 일정이 수십억 개라 다 못 따질 때, <b>"답을 개선할 유망한 후보만"</b> 그때그때 추가해 푸는 분해 기법. 후보 찾기를 CP로 하면 <b>CPCG</b>.</dd>
+  <dt>메타휴리스틱 <span class="en">GA · SA · HC · ACO · PS</span></dt>
+  <dd>최적 보장은 없지만 <b>빠르게 "충분히 좋은" 해</b>를 찾는 탐색 가족. <b>GA</b>(유전: 여러 해를 교배·돌연변이로 진화), <b>SA</b>(담금질: 한 해를 온도 따라 떠돌게 함), <b>HC</b>(언덕오르기: 더 좋아질 때만 이동하는 가장 단순한 지역탐색), <b>ACO</b>(개미군집: 페로몬 흔적으로 경로 학습), <b>PS</b>(입자군집: 새떼처럼 정보 공유).</dd>
+  <dt>makespan <span class="en">총 완료시각</span></dt>
+  <dd>모든 수술이 끝나는 <b>가장 늦은 시각</b>. 짧을수록 하루가 일찍 끝남 = 초과근무↓.</dd>
+  <dt>무대기 <span class="en">no-wait</span></dt>
+  <dd>준비→수술→회복 단계 사이에 <b>환자가 기다리는 틈이 없어야</b> 한다는 제약. 앞 단계가 끝나는 즉시 다음 단계 시작.</dd>
+  <dt>블록 전략 <span class="en">Block Strategy</span></dt>
+  <dd>수술실 시간을 과목별로 <b>통째 배정</b>(예: 월 오전 = 정형외과 블록). 실제 병원의 표준 운영 방식.</dd>
+  <dt>확률(불확실성) 반영 <span class="en">stochastic / chance-constrained</span></dt>
+  <dd>수술시간이 들쭉날쭉한 현실을 "평균 ± 변동"으로 보고, <b>정해진 확률(신뢰수준 α)로 일정이 지켜지게</b> 만드는 것. 반대는 고정값으로 보는 <b>결정론적</b>.</dd>
+  <dt>신뢰수준 α · 변동계수 cv</dt>
+  <dd><b>α</b> = "시간 안에 끝날 확률" 목표(0.95 = 95% 보장). <b>cv = σ/μ</b> = 수술시간이 얼마나 들쭉날쭉한지(변동÷평균).</dd>
+  <dt>가동률 <span class="en">Utilization Rate</span></dt>
+  <dd>수술실이 노는 시간 없이 <b>얼마나 꽉 차게 쓰였나</b>(%). 100% 초과 = 초과근무 발생.</dd>
+  <dt>패널티 <span class="en">penalty (SA 논문)</span></dt>
+  <dd>수술이 <b>법정 마감(보장 최대 응답시간)을 넘긴 일수 × 우선순위 가중치</b>. 병원이 물어야 하는 금전적 비용의 대리 지표.</dd>
+  <dt>최적 "증명" <span class="en">proving optimality</span></dt>
+  <dd>좋은 답을 <b>찾는 것</b>과 "이보다 나은 답은 없다"를 <b>증명하는 것</b>은 별개. CP는 답은 빨리 찾는데 증명이 오래 걸리기도 한다.</dd>
+</dl>
+
+<!-- ============ PAPER 1 ============ -->
+<h2 class="sec" id="p1">③ 1번 논문 — CP+GP에 수술팀·불확실성 통합</h2>
+<div class="paper p1">
+  <div class="phead">
+    <div class="pno">PAPER 1 · 온라인 2022-12 / 권호 2023 · 유료(closed access)</div>
+    <h2>「수술팀을 포함한 수술실 스케줄링: 제약 프로그래밍과 목표계획법의 새로운 접근」</h2>
+    <div class="entitle">Operating room scheduling with surgical team: a new approach with constraint programming and goal programming</div>
+    <div class="meta">Şeyda Gür(Şanlıurfa 직업학교) · Mehmet Pınarbaşı · Hacı Mehmet Alakaş · Tamer Eren(이상 튀르키예 Kırıkkale대) · <i>Central European Journal of Operations Research</i> (2023) 31:1061–1085 · <a href="https://doi.org/10.1007/s10100-022-00835-z" target="_blank">doi:10.1007/s10100-022-00835-z</a></div>
+  </div>
+
+  <div class="oneline">🎯 3번(2019)의 후속작. 같은 병원 데이터에 <b>"수술팀 4역할"과 "수술시간 불확실성"을 새로 넣어</b> 한 단계 현실화한 버전.</div>
+
+  <div class="block"><div class="bt"><span class="emoji">🧩</span>문제 셋업 (본문 확인)</div>
+    <div class="kv">
+      <span class="k">데이터</span><span>3번(2019) 연구의 병원 데이터 활용 — <b>수술 100건 · 수술실 5개 · 주간 10슬롯</b>(슬롯=4시간, 하루 2개) = 50개 "수술실-시간슬롯" · 인력 35명</span>
+      <span class="k">수술팀</span><span>수술 1건당 <b>주수술의 1 + 보조수술의 1 + 간호사 1 + 마취과 1</b> (4명). 역량(=경력연수)이 높은 쪽이 주수술의</span>
+      <span class="k">풀이</span><span><b>2단계</b>: ① 수술팀을 전문과목별로 수술실에 배정(작업량 균형) → ② 수술을 배정. 솔버: ILOG CPLEX 12.10</span>
+      <span class="k">목적함수</span><span>① 슬롯당 240분 기준 <b>과·부족 편차 합 최소화</b>(가동률 균형) ② 팀별 주간 수술 건수 편차 최소화(작업량 균형)</span>
+      <span class="k">불확실성</span><span><b>확률제약계획법</b>(Charnes &amp; Cooper 1959). 수술시간을 평균 μ·분산 σ²로 보고 신뢰수준 α로 보장. 비선형 항은 Ağpak &amp; Gökçen(2007) 선형근사로 처리 → 선형/비선형 두 버전 비교</span>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🆕</span>정확히 무엇이 바뀌었나 (3번 2019 대비)</div>
+    <table>
+      <tr><th>항목</th><th>3번 (2019)</th><th>1번 (2022) — 바뀐 점</th></tr>
+      <tr><td>수술시간</td><td>과거 평균 <b>고정값</b></td><td class="arrow">평균 μ + 분산 σ² + 신뢰수준 α(0.900~0.975) + 변동계수 cv(0.1~0.5)의 <b>확률 모델</b></td></tr>
+      <tr><td>인력</td><td>전문과목 단위(개인 구분 없음)</td><td class="arrow"><b>주·보조 수술의/간호사/마취과 4역할</b> 명시 + 역량(경력) 기반 주·보조 매칭 — 저자 주장 "수술팀 전체를 넣은 문헌 최초"</td></tr>
+      <tr><td>풀이 구조</td><td>배정 1단계</td><td class="arrow"><b>팀 배정 → 수술 배정 2단계</b> + 팀 작업량 균형 목적 추가</td></tr>
+      <tr><td>분석</td><td>현행(수기) 대비 비교</td><td class="arrow">수기 비교 대신 <b>민감도 분석</b>(수술 수·수술실 수·α·cv를 하나씩 바꿔봄) + 경영 제언 4건</td></tr>
+    </table>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">📊</span>성능 지표 — 전부 수치로</div>
+    <p><b>핵심 결과 (Table 6, 평균 가동률):</b></p>
+    <table>
+      <tr><th>모델</th><th>평균 가동률</th><th>표준편차</th><th>해석</th></tr>
+      <tr><td>결정론적(불확실성 무시)</td><td class="num">71%</td><td>—</td><td class="mini">기준선 = 우리 프로젝트와 같은 가정</td></tr>
+      <tr><td>확률 — 선형 CP</td><td class="num">78%</td><td class="num">0.0287</td><td class="mini">선형근사 버전</td></tr>
+      <tr><td>확률 — 비선형 CP</td><td class="num arrow">82%</td><td class="num">0.0376</td><td class="mini">변동을 가장 잘 흡수, 최고</td></tr>
+    </table>
+    <p><b>세부 (Table 5):</b> α·cv가 커질수록 가동률 상승 — 선형 모델 72%(α0.900·cv0.1) → 83%(α0.975·cv0.5), 비선형 75% → 89%.</p>
+    <p><b>민감도 분석 (Table 3·4):</b></p>
+    <table>
+      <tr><th>바꾼 변인</th><th>가동률 변화</th><th>의미</th></tr>
+      <tr><td>수술 수 90건으로 ↓</td><td class="num">68~73%</td><td class="mini">자원 여유 → 놀게 됨</td></tr>
+      <tr><td>기본(100건)</td><td class="num">72~83%</td><td class="mini">기준</td></tr>
+      <tr><td>수술 수 110건 ↑</td><td class="num">94~98%</td><td class="mini">거의 만실</td></tr>
+      <tr><td>수술 수 120건 ↑</td><td class="num">95~99%</td><td class="mini">빈 시간 소멸</td></tr>
+      <tr><td>수술실 블록 40으로 ↓</td><td class="num down">106~109%</td><td class="mini"><b>초과근무 발생</b>(100% 초과)</td></tr>
+      <tr><td>수술실 블록 60 / 70으로 ↑</td><td class="num">70~72% / 60~63%</td><td class="mini">방이 남아돎 → 개방비 낭비</td></tr>
+    </table>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">✅</span>고려한 사항</div>
+    <ul class="clean">
+      <li>수술시간 <b>불확실성</b>(μ·σ²·α·cv) — 확률제약으로 정식 반영</li>
+      <li><b>수술팀 4역할</b>(주·보조 수술의, 간호사, 마취과) + 역량(경력연수) 매칭</li>
+      <li>팀 <b>작업량 균형</b>(주간 수술 건수 편차 최소화) + 전문과목 외 수술 금지</li>
+      <li>블록 스케줄링(같은 과 수술을 같은 슬롯에), 가동률 균형(240분 기준 과·부족 편차)</li>
+      <li>준비·청소시간을 수술시간에 포함, 근무 08:00–17:00(점심 1시간), 주말 휴무</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🚫</span>고려하지 않은 사항</div>
+    <div class="split">
+      <div class="callout c-warn"><b>모델에서 제외</b>
+        <ul class="clean">
+          <li><b>응급 환자</b> — 수술 건수를 고정(예정 수술만) <span class="mini">· 논문 가정으로 명시</span></li>
+          <li><b>인력 "수" 제약</b> — "충분한 인력·자원이 있다"고 가정(역할은 구분하되 부족 상황은 없음) <span class="mini">· 논문 가정으로 명시</span></li>
+          <li>ICU·병동 등 <b>수술 후(하류) 자원</b> <span class="mini">· 모델 범위 밖(경영 제언에서 "향후 고려 가능"으로만 언급)</span></li>
+          <li>환자 개인 선호·슬롯 내 수술 순서 <span class="mini">· 모델 범위 밖(가정 목록에는 없음)</span></li>
+        </ul></div>
+      <div class="callout c-note"><b>데이터·검증 한계</b>
+        <ul class="clean">
+          <li>과거(historical) 데이터 기반 — 실시간 변화 미반영</li>
+          <li>단일 병원 데이터 — 일반화 미검증</li>
+          <li>수기(현행) 대비 개선폭은 보고 안 함(모델 간 비교만)</li>
+        </ul></div>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🪞</span>우리 프로젝트와의 연결</div>
+    <p class="mini">우리 모델(시간 고정 + staff 통짜 풀)은 정확히 이 논문의 "결정론적 71%" 출발점에 있다. 이 논문은 ① 시간에 α·cv 확률을 넣고 ② 인력을 역할로 쪼개면 어떻게 되는지를 수식까지 보여주는 <b>다음 단계 교과서</b>.</p>
+  </div>
+</div>
+
+<!-- ============ PAPER 2 ============ -->
+<h2 class="sec" id="p2">④ 2번 논문 — MILP vs CP vs 열생성 속도 대결</h2>
+<div class="paper p2">
+  <div class="phead">
+    <div class="pno">PAPER 2 · 2022 · JCR Q1</div>
+    <h2>「블록 전략 하 수술실 계획을 위한 혼합정수선형계획·제약프로그래밍·열생성 접근법」</h2>
+    <div class="entitle">Mixed-integer linear programming, constraint programming and column generation approaches for operating room planning under block strategy</div>
+    <div class="meta">Najmeh Ghandehari · Kamran Kianfar · <i>Applied Mathematical Modelling</i> (2022) · <a href="https://doi.org/10.1016/j.apm.2022.01.001" target="_blank">doi:10.1016/j.apm.2022.01.001</a></div>
+  </div>
+
+  <div class="oneline">🎯 같은 문제를 <b>네 가지 계산법(MILP1·MILP2·CP·CPCG)</b>으로 풀어 속도·정확도를 정면 비교 — 문제가 커질수록 CP 계열 압승.</div>
+
+  <div class="block"><div class="bt"><span class="emoji">🧩</span>문제 셋업 (본문 확인)</div>
+    <div class="kv">
+      <span class="k">문제</span><span>블록 전략 + 예정환자(elective). <b>전술 층</b>(수술실 개방, 과목·의사를 블록에 배정 = MSS) + <b>운영 층</b>(블록 내 수술 순서) 동시 결정</span>
+      <span class="k">목적함수</span><span>3원 비용 최소화: ① 수술실 <b>개방비+초과근무비</b> ② 환자 <b>대기비</b> ③ 외과의 <b>유휴비</b> — 전부 돈($)으로 환산</span>
+      <span class="k">테스트</span><span>무작위 40개 인스턴스(8그룹 G1~G8 × 5개): 수술 15~30건, 외과의 3 또는 6명, 수술실 3개 × 3일. 수술시간 로그정규분포</span>
+      <span class="k">비용 값</span><span>개방비 U[7000,9000]$/일 · 초과 U[25,35]$/분 · 환자대기 U[2000,4000]$/일 · 의사유휴 U[200,400]$/분 · 정규 480분/최대 720분</span>
+      <span class="k">플랫폼</span><span>MILP: GAMS 24.1 + CPLEX 12.5 / CP·CPCG: IBM ILOG CPLEX Optimization Studio 12.6 · i7 2.2GHz 8GB</span>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🆕</span>정확히 무엇이 새로운가 (논문이 명시한 3대 기여)</div>
+    <ul class="clean">
+      <li><b>① 전술+운영 두 층을 동시에</b> — 블록 전략 문헌 대부분은 한 층만 다룸(논문 Table 1에서 33편 비교).</li>
+      <li><b>② 환자·병원·외과의 3자의 선호를 동시에</b> — 기존 연구는 보통 1~2개 이해관계자만.</li>
+      <li><b>③ CPCG 설계의 혁신</b> — 열생성의 "플랜"을 기존 문헌의 <i>방-하루</i> 단위가 아닌 <b>전문과목 단위</b>로 정의 → 생성해야 하는 플랜(열) 수가 평균 78개→12개로 <b>84.6% 감소</b>. 덤으로 2단계 LP(MILP2)라는 빠른 근사 휴리스틱도 제시.</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">📊</span>성능 지표 — 전부 수치로</div>
+    <p><b>방법 4종 속도 비교 (Table 5, 그룹 평균; CP의 괄호는 "최적 증명"까지 걸린 시간):</b></p>
+    <table>
+      <tr><th>그룹(수술 수)</th><th>MILP1</th><th>MILP2</th><th>CP 해발견(증명)</th><th>CPCG</th></tr>
+      <tr><td>G1 (15건)</td><td class="num">227초</td><td class="num">7초</td><td class="num">3초 (9초)</td><td class="num">13초</td></tr>
+      <tr><td>G2 (20건)</td><td class="num down">3,452초</td><td class="num">8초</td><td class="num">10초 (72초)</td><td class="num">25초</td></tr>
+      <tr><td>G3 (25건)</td><td class="num down">3,600초 실패</td><td class="num">9초</td><td class="num">11초 (888초)</td><td class="num">49초</td></tr>
+      <tr><td>G4 (30건)</td><td class="num down">3,600초 실패</td><td class="num">8초</td><td class="num">45초 (증명 못 함)</td><td class="num">106초</td></tr>
+      <tr><td>G8 (30건·의사 6)</td><td class="num down">3,600초 실패</td><td class="num">186초</td><td class="num">237초</td><td class="num">171초</td></tr>
+    </table>
+    <ul class="clean">
+      <li><b>MILP1</b>: 25건↑에서 1시간 내 최적 실패. 30건에서 이진변수 3,996개 / <b>제약 93,807개</b>로 폭발 (CP는 변수 357 / 제약 1,194).</li>
+      <li><b>MILP2</b>(2단계 분해): 최speed(7~186초)지만 최적 보장 X — 오차 <b>최대 2%, 평균 0.53%</b>.</li>
+      <li><b>CPCG</b>: 모든 그룹에서 최적해 도달 — <b>그룹 평균 13~171초(전부 3분 이내)</b>. 큰 문제(G2~)에선 최적 보장 방법 중 가장 빠름(가장 작은 G1만 CP가 더 빠름: 3초/증명 9초). 초기 휴리스틱 해를 평균 <b>46% 개선</b>(예: 87,000$→52,581$).</li>
+    </ul>
+    <p><b>민감도 분석 (Table 6~9):</b></p>
+    <table>
+      <tr><th>분석 대상</th><th>결과 수치</th></tr>
+      <tr><td>목적함수 가중치 변화 (18조합)</td><td><b>환자 대기비용이 가장 민감</b> — 변동계수 CV 0.56 (수술실 비용 0.16, 의사 유휴는 항상 0이라 둔감)</td></tr>
+      <tr><td>수술실 개방비 ↑(800→15,200$)</td><td>풀이시간 ↓(3,600초 초과→65초). 환자 대기비용엔 영향 없음(34,103$ 고정)</td></tr>
+      <tr><td>블록 최대 가용시간 560→920분</td><td>초과근무 235분→1,170분 <b>↑</b> · 환자 총대기 19일→6일 <b>↓</b> (트레이드오프)</td></tr>
+    </table>
+    <div class="callout c-good">✅ 결론 문장(논문): "환자 대기비용이 셋 중 가장 민감하므로 <b>관리자는 환자 대기를 1순위</b>로 두어야 한다." → 우리 프로젝트의 Σwait 목표와 정확히 일치.</div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">✅</span>고려한 사항</div>
+    <ul class="clean">
+      <li>3자 비용 동시(개방+초과 / 환자 대기 / 의사 유휴) — bottom-up 원가 산정 논리로 정당화</li>
+      <li>블록 전략 + MSS(주간 마스터 일정) + 블록 내 수술 <b>순서</b>까지</li>
+      <li>외과의 전문과목 매칭, 한 의사가 동시에 두 방 금지</li>
+      <li>초과근무·유휴 허용(비용으로 벌점), 과목별 개방비·초과비 차등</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🚫</span>고려하지 않은 사항</div>
+    <div class="split">
+      <div class="callout c-warn"><b>모델에서 제외 (논문 가정)</b>
+        <ul class="clean">
+          <li><b>수술시간 변동</b> — 결정론적 고정 (논문 스스로 "향후과제: 불확실성·확률 모델"로 명시)</li>
+          <li><b>응급 환자</b> — 별도 전용 수술실이 있다고 가정하고 제외</li>
+          <li>ICU·병동 등 <b>하류 자원</b> — "수술팀·수술실이 병목"이라며 제외</li>
+          <li>의사의 하루 첫 수술 전 유휴시간(외래 등 다른 업무 가능하다며 무시)</li>
+          <li>간호사·마취과 인력, 의사의 요일 선호, 블록 불가용 상황</li>
+        </ul></div>
+      <div class="callout c-note"><b>저자가 인정한 실무 장벽</b>
+        <ul class="clean">
+          <li>의사 유휴비·환자 대기비의 단가 추정이 현실적으로 어려움</li>
+          <li>실데이터가 아닌 무작위 인스턴스(3 수술실 × 3일 소규모)</li>
+        </ul></div>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🪞</span>우리 프로젝트와의 연결</div>
+    <p class="mini">"큰 문제일수록 CP가 MILP를 이긴다"의 직접 증거 → 우리가 CP‑SAT를 채택한 도메인 근거. "환자 대기가 가장 중요" 결론은 우리 Σwait 목표의 정당화.</p>
+  </div>
+</div>
+
+<!-- ============ PAPER 3 ============ -->
+<h2 class="sec" id="p3">⑤ 3번 논문 — 실제 병원 사례연구 (1번의 원조)</h2>
+<div class="paper p3">
+  <div class="phead">
+    <div class="pno">PAPER 3 · 2019 · 오픈액세스(무료 전문)</div>
+    <h2>「목표계획법과 제약 프로그래밍을 이용한 수술 스케줄링: 사례 연구」</h2>
+    <div class="entitle">Surgical Operation Scheduling with Goal Programming and Constraint Programming: A Case Study</div>
+    <div class="meta">Şeyda Gür · Tamer Eren · Hacı Mehmet Alakaş (Kırıkkale대 산업공학) · <i>Mathematics</i> (MDPI) 7(3):251, 2019 · <a href="https://www.mdpi.com/2227-7390/7/3/251" target="_blank">mdpi.com/2227-7390/7/3/251</a></div>
+  </div>
+
+  <div class="oneline">🎯 이론이 아니라 <b>실제 터키 주립병원</b>에 적용해, 사람이 손으로 짠 일정 대비 <b>얼마나 좋아지는지 숫자로 입증</b>한 출발점.</div>
+
+  <div class="block"><div class="bt"><span class="emoji">🧩</span>문제 셋업 (본문 확인)</div>
+    <div class="kv">
+      <span class="k">데이터</span><span>터키 주립병원 실데이터: <b>수술 120건 · 6개 과</b>(정형외과·성형외과·일반외과1·일반외과2·심혈관외과·비뇨기과) <b>· 수술실 8개 · 주간 10블록</b>(블록=4시간, 하루 2개 × 5일). 수술시간 25~240분(준비·청소 포함)</span>
+      <span class="k">방법</span><span><b>목표계획법(GP)</b>은 IBM ILOG CPLEX로, <b>CP</b>는 CP Optimizer로 각각 모델링. 각 모델 <b>3,000초</b> 실행</span>
+      <span class="k">시나리오</span><span>관리자 요구 기반 3종 × 2방법 = 6개: <b>S1/S4</b> 블록+가동률 균형 · <b>S2/S5</b> + 정형외과의 오전(8~12시) 선호 반영 · <b>S3/S6</b> 한 수술실 = 한 과 전용(주 전체)</span>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🆕</span>정확히 무엇이 새로웠나</div>
+    <ul class="clean">
+      <li>GP와 CP를 <b>통합·병행 적용</b>해 같은 병원 문제를 양쪽으로 풀고 현행 수기와 3자 비교한 사례연구.</li>
+      <li>"관리자가 실제로 원하는 것"(균형·선호·전용방)을 <b>시나리오로 번역</b>해 모델에 넣은 실무 지향 설계.</li>
+      <li>CP 모델링 기법: 수술실×시간대를 <b>단일 인덱스(80=8×10)로 통합</b> — 논문 명시: "CP의 결정변수가 GP보다 적어 모델 수립·해결이 수월했다".</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">📊</span>성능 지표 — 전부 수치로 (Table 8, 현행 수기 대비)</div>
+    <table>
+      <tr><th>지표</th><th>현행(수기)</th><th>S1·GP</th><th>S4·CP</th><th>S2·GP</th><th>S5·CP</th><th>S3·GP</th><th>S6·CP</th></tr>
+      <tr><td><b>총 가동률</b></td><td class="num down">52%</td><td class="num arrow">85%</td><td class="num">70%</td><td class="num arrow">95%</td><td class="num">70%</td><td class="num">80%</td><td class="num">79%</td></tr>
+      <tr><td>초과근무 블록 수</td><td class="num down">45</td><td class="num arrow">0</td><td class="num">4</td><td class="num">17</td><td class="num">2</td><td class="num arrow">0</td><td class="num">13</td></tr>
+      <tr><td>저활용(&lt;50%) 블록</td><td class="num">15</td><td class="num">0</td><td class="num">20</td><td class="num">0</td><td class="num">16</td><td class="num">5</td><td class="num">10</td></tr>
+      <tr><td>만석(100%) 블록</td><td class="num">5</td><td class="num">11</td><td class="num">2</td><td class="num">20</td><td class="num">4</td><td class="num">7</td><td class="num">2</td></tr>
+      <tr><td>의사 선호 충족</td><td>—</td><td>—</td><td>—</td><td>✓</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td>과 전용방</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✓</td><td>✓</td></tr>
+    </table>
+    <ul class="clean">
+      <li><b>초과근무 시간(분):</b> S1&amp;4 — GP 0분 / CP 60분+ · S2&amp;5 — GP 255분 / CP 70분 · S3&amp;6 — GP 0분 / CP 125분. (선호·전용방 같은 특수 제약을 넣을수록 초과근무가 생김)</li>
+      <li><b>수술 120건 전부 배정</b> — 수기로는 일부를 일정에 못 넣어 환자 대기가 늘고 있었음.</li>
+      <li>GP는 가동률을 높이는 대신 초과근무 위험(S2: 95%인데 255분), CP는 초과근무를 적게 균형(S5: 70%·70분) — <b>방법 간 트레이드오프</b>를 수치로 드러냄.</li>
+    </ul>
+    <div class="callout c-good">✅ 핵심: 수기 가동률 <b>52% → 모델 최대 95%</b>, 초과근무 블록 <b>45 → 최소 0</b>, 미배정 수술 <b>0건</b>.</div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">✅</span>고려한 사항</div>
+    <ul class="clean">
+      <li>블록 전략(같은 과를 같은 블록에 — 장비·인력 교체로 인한 대기·파손 방지 목적을 명시적으로 논증)</li>
+      <li>가동률 균형(블록당 과·부족 편차 최소화), 초과근무·저활용 최소화</li>
+      <li>외과의 시간 선호(S2/S5: 정형외과의 오전 근무), 과 전용 수술실(S3/S6)</li>
+      <li>준비·청소시간 포함, 근무 08:00–17:00(점심 12–13시), 주말 휴무</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🚫</span>고려하지 않은 사항 (논문 §5 Limitations + 가정)</div>
+    <div class="callout c-warn">
+      <ul class="clean">
+        <li><b>응급 미고려</b> — 수술 건수 확정 가정</li>
+        <li><b>수술시간 = 과거 평균 고정값</b> (변동 없음 = 결정론적)</li>
+        <li><b>인력 충분 가정</b> — 개별 의료진(간호사·마취과 등) 제약 없음</li>
+        <li><b>블록 내 수술 순서(ranking) 미고려</b> — "배정만" 다룸 (논문이 가정에 명시)</li>
+        <li>주 한계(논문 명시): <b>과거 데이터</b> 기반이라 실시간 현실 계획이 어렵고, 현실의 너무 많은 제약을 한 모델에 다 넣을 수 없어 가정이 불가피</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🪞</span>우리 프로젝트와의 연결</div>
+    <p class="mini">"알고리즘 일정 vs 사람 일정"의 효과를 처음 정량화한 의료 CP 선례. 이 논문의 4개 공백(변동·순서·인력·응급) 중 변동·인력을 1번(2022)이 메웠다 — 우리 모델 발전 로드맵과 동일 경로.</p>
+  </div>
+</div>
+
+<!-- ============ PAPER 4 (GA/TNSSP) ============ -->
+<h2 class="sec" id="p4">⑥ GA 비교 논문 — 3단계 무대기: CP vs 유전알고리즘·개미군집·MILP</h2>
+<div class="paper p4">
+  <div class="phead">
+    <div class="pno">GA 비교 논문 · 2026 · 벤치마크 공개(GitHub)</div>
+    <h2>「3단계 무대기 수술 스케줄링 문제를 위한 MILP·CP 정식화」</h2>
+    <div class="entitle">Mixed-integer linear programming and constraint programming formulations for solving the three-stage no-wait surgery scheduling problem</div>
+    <div class="meta">Yaohui Guo · Yang Wang · Zequn Wei · Abraham P. Punnen · <i>Computers &amp; Industrial Engineering</i> 216:111976 (2026) · <a href="https://doi.org/10.1016/j.cie.2026.111976" target="_blank">doi:10.1016/j.cie.2026.111976</a></div>
+  </div>
+
+  <div class="oneline">🎯 준비→수술→회복 3단계 무대기 문제(TNSSP)를 <b>MILP 4종 + CP + 유전(GA) + 개미군집(ACO)</b> 7가지로 정면 대결 — <b>CP의 완승</b>.</div>
+
+  <div class="block"><div class="bt"><span class="emoji">🧩</span>문제 셋업 (본문 확인)</div>
+    <div class="kv">
+      <span class="k">문제(TNSSP)</span><span>환자가 <b>준비(PHU) → 수술(OR) → 회복(PACU)</b> 3단계를 <b>틈 없이(no-wait)</b> 연속 통과. 목표 = <b>makespan(총 완료시각) 최소화</b>. 강(strongly) NP-난해</span>
+      <span class="k">자원 6종</span><span>PHU 침대 · 간호사 · 수술실 · <b>외과의(전문과목별)</b> · 마취과 · PACU 침대. 수술마다 간호사·마취과 필요 인원이 다름</span>
+      <span class="k">방법 7종</span><span>MILP 4종(순서기반 MILP1 / 위치기반 MILP2 / 시간색인 MILP3 / 분리논리 MILP4) + <b>CP</b>(구간변수+누적함수 pulse) + 비교용 <b>GA</b>(Lin&amp;Yen 2023) · <b>ACO</b>(Xiang 2015)</span>
+      <span class="k">테스트</span><span>Set I 25개(수술 10~30건, 자원 6종 전부) + Set II 40개(시설 자원만, 간소판) + <b>Set III 실데이터 10개</b>(중국 화서병원 West China Hospital 당일수술센터, 20~26건/일) = 총 75개</span>
+      <span class="k">플랫폼</span><span>IBM CP Optimizer / CPLEX 22.12, C++, Linux 듀얼 Xeon Gold 6226R·256GB, 제한시간 7,200초</span>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🆕</span>정확히 무엇이 새로운가 (논문이 명시한 4대 기여)</div>
+    <ul class="clean">
+      <li><b>① TNSSP에 CP 모델 최초 적용</b> — 자원 6종을 전부 담은 채로. (기존 문헌은 MILP·메타휴리스틱뿐)</li>
+      <li><b>② 기존 문헌과 다른 MILP 4종 신규 정식화</b> — 같은 문제를 4가지 수식 스타일로 모델링해 어떤 모델링이 유리한지까지 비교.</li>
+      <li><b>③ GA·ACO(전용 설계 메타휴리스틱)와의 공정 비교</b> — 정확해 vs 휴리스틱 구도를 65개 벤치마크에서 체계 검증.</li>
+      <li><b>④ 실병원 10일치 데이터 검증 + 확률(SAA) 확장 + 벤치마크 전체 공개.</b></li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">📊</span>성능 지표 — 전부 수치로</div>
+    <p><b>품질·속도 종합 (Set I, 자원 6종, 25개):</b></p>
+    <table>
+      <tr><th>방법</th><th>최적 도달</th><th>최적 대비 오차(gap)</th><th>속도</th></tr>
+      <tr><td><span class="chip tag-cp">CP</span></td><td class="arrow">25/25 전부 최적</td><td class="num">0%</td><td>15건↓ 10초 내 · 30건 최대 118초</td></tr>
+      <tr><td><span class="chip tag-ga">GA(유전)</span></td><td>1/25</td><td class="num">0~7.5%</td><td>29~1,526초 (30건에서 CP보다 10배+ 느림)</td></tr>
+      <tr><td><span class="chip tag-aco">ACO(개미)</span></td><td>1/25</td><td class="num">0~12.0%</td><td>9~155초 (빠르나 조기수렴·품질↓)</td></tr>
+      <tr><td><span class="chip tag-milp">MILP1</span></td><td class="down">1/25 (10건짜리 1개만)</td><td>0.4~12%(가능해 얻은 경우만)</td><td>대부분 7,200초 초과</td></tr>
+      <tr><td><span class="chip tag-milp">MILP2</span></td><td class="down">0/25 — 가능해조차 0건</td><td>—</td><td>전멸</td></tr>
+      <tr><td><span class="chip tag-milp">MILP3</span></td><td class="down">0/25 — 가능해는 최소형(10건) 그룹만</td><td>3.4~11.4%</td><td>7,200초 한계</td></tr>
+      <tr><td><span class="chip tag-milp">MILP4</span></td><td>5/25 (가장 작은 10건 그룹만)</td><td>4.7~12.3%(그 외 일부)</td><td>294~5,990초 (같은 문제를 CP는 1초 미만)</td></tr>
+    </table>
+    <p class="mini">구체 예 — AR5_1(30건): 최적 478을 <b>CP 47.5초</b> / GA 484(+1.24%) 952.6초 / ACO 506(+5.53%) 144초 / MILP 전부 실패. 모델 크기(30건, 이진변수): MILP3 445,500 · MILP2 148,500 · MILP4 145,800 · MILP1 13,050 — CP는 수술 30건×3단계 = <b>구간변수 90개</b> 수준의 컴팩트 표현.</p>
+    <p><b>실병원 Set III (10일):</b> CP <b>10/10 전부 최적</b>(0.0~583초) · GA 오차 0~3.78% · ACO 0~9.39%.</p>
+    <p><b>불확실성 확장 (SAA 50시나리오; CP에 1,800초 제한 — ACO 평균 실행시간 ~1,800초에 맞춘 것, GA는 2,000초+ 소요):</b></p>
+    <table>
+      <tr><th>사례</th><th>CP 기대 makespan(초과근무분)</th><th>GA</th><th>ACO</th></tr>
+      <tr><td>WCH_6 (26건)</td><td class="num arrow">615.9 (15.9분)</td><td class="num">658.1 (58.1분)</td><td class="num">678.3 (78.3분)</td></tr>
+      <tr><td>WCH_5 (25건)</td><td class="num arrow">671.3 (71.3분)</td><td class="num">717.8 (117.8분)</td><td class="num">724.9 (124.9분)</td></tr>
+      <tr><td>WCH_9 (22건)</td><td class="num arrow">537.1 (0분)</td><td class="num">584.8 (0분)</td><td class="num">593.7 (0분)</td></tr>
+    </table>
+    <div class="callout c-good">✅ 핵심: 결정론·실데이터·확률 시나리오 <b>전 조건에서 CP &gt; GA &gt; ACO ≫ MILP</b>. "정확해(CP)가 전용 메타휴리스틱보다 품질도 속도도 낫다"는 드문 전면 비교 증거.</div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">✅</span>고려한 사항</div>
+    <ul class="clean">
+      <li>3단계 환자 흐름(준비→수술→회복) + <b>무대기</b> 연속성</li>
+      <li>자원 6종 동시 제약 + 수술별 간호사·마취과 <b>필요 인원 차등</b> + 외과의 전문과목 매칭</li>
+      <li>비선점(non-preemptive)·연속 점유, 자원 용량 고정·기지(旣知)</li>
+      <li>(확장) 수술시간 확률분포 — 수술 단계는 과목별 분포, 회복 단계는 병원 이력 기반, 준비 단계는 기록이 없어 <b>전문가 추정</b> 정규분포(평균 15분·SD 5)</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🚫</span>고려하지 않은 사항</div>
+    <div class="callout c-warn">
+      <ul class="clean">
+        <li><b>응급 수술</b> 미고려 · <b>환자 선호</b> 미반영 · 불확실성(본 모델 기준) — 셋 모두 향후과제로 명시</li>
+        <li>목표가 <b>makespan 하나</b> — 비용·대기·만족 같은 다목표 아님</li>
+        <li><b>no-wait 가정 자체의 경직성</b> — 현실에선 단계 사이 짧은 대기가 허용될 수 있음(blocking 변형은 별도 문제)</li>
+        <li>외과의 제외 모든 자원을 <b>균질(서로 교환 가능)</b>로 가정 — 간호사 숙련도 차이 등 무시</li>
+        <li>준비단계 시간은 병원 기록이 없어 전문가 추정(평균 15분·SD 5)으로 모델링</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🪞</span>우리 프로젝트와의 연결</div>
+    <p class="mini">우리 구도(CP‑SAT vs GA vs SA)와 거의 동일한 실험을 더 크게 돌린 논문. "CP가 GA를 이긴다"가 75개 인스턴스로 입증되어, <b>우리가 RCPSP/CP‑SAT를 '정답·기준'으로 삼은 설계</b>를 최신 연구가 강하게 뒷받침. 누적함수(pulse) 방식도 우리 <code>AddCumulative</code>와 동일 개념.</p>
+  </div>
+</div>
+
+<!-- ============ PAPER 5 (SA) ============ -->
+<h2 class="sec" id="p5">⑦ SA 논문 — 포르투갈 실병원에서 담금질·언덕오르기 실증</h2>
+<div class="paper p5">
+  <div class="phead">
+    <div class="pno">SA 논문 · 2025 · 오픈액세스(CC-BY)</div>
+    <h2>「메타휴리스틱 최적화 모델을 통한 의료기관 수술 스케줄링 개선: 알고리즘 검증 연구」</h2>
+    <div class="entitle">Enhancing Surgery Scheduling in Health Care Settings With Metaheuristic Optimization Models: Algorithm Validation Study</div>
+    <div class="meta">João Lopes · Tiago Guimarães · Júlio Duarte · Manuel Santos (포르투갈 Minho대 ALGORITMI 연구센터) · <i>JMIR Medical Informatics</i> 2025;13:e57231 · <a href="https://medinform.jmir.org/2025/1/e57231" target="_blank">doi:10.2196/57231</a></div>
+  </div>
+
+  <div class="oneline">🎯 포르투갈 대형병원(CHUdSA)의 <b>2019년 실제 수기 스케줄</b>에 HC·SA·PS를 적용 — 3개 과 합계 수기 패널티 <b>695,340 → HC 0 / SA 6,370</b>으로 격감. 단, 여기선 <b>가장 단순한 언덕오르기(HC)가 SA를 이김</b>.</div>
+
+  <div class="block"><div class="bt"><span class="emoji">🧩</span>문제 셋업 (본문 확인)</div>
+    <div class="kv">
+      <span class="k">병원·데이터</span><span>Centro Hospitalar e Universitário de Santo António(CHUdSA, "포르투갈 유수 병원" — 원문 표현) — <b>2019년</b>(팬데믹 전 평시) 대기리스트 실데이터. 익명화 데이터라 윤리심의 면제</span>
+      <span class="k">대상</span><span>3개 과 총 <b>429건 vs 슬롯 256개</b>: 비만수술 198건/122슬롯 · 비뇨기과 133건/89슬롯 · 소아성형 98건/45슬롯 — <b>수요가 공급보다 큰 자원부족 상황</b></span>
+      <span class="k">목적함수</span><span><b>패널티 최소화</b>: 패널티 = (마감, 즉 "보장 최대 응답시간" 초과 일수) × (우선순위 가중치). 마감 내 배정이면 0 — 병원이 무는 비용의 대리지표</span>
+      <span class="k">알고리즘</span><span><span class="chip tag-hc">HC 언덕오르기</span> <span class="chip tag-sa">SA 담금질</span> <span class="chip">PS 입자군집</span> 3종. 초기해는 <b>first-fit</b>(대기일·우선순위 순으로 빈 슬롯에 차례 배치). R 구현(Cortez 2014; PS는 pso 패키지)</span>
+      <span class="k">방법론</span><span>DSR(설계과학) + CRISP-DM 병행 — 의료정보학 저널다운 실증 프로세스</span>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🆕</span>정확히 무엇이 새로운가</div>
+    <ul class="clean">
+      <li>특정 과에 특화된 기존 연구들과 달리, <b>"어느 과에든 그대로 적용 가능한 전역 변수·제약 틀"</b>을 설계해 3개 과에 동시 검증 — 범용성 주장.</li>
+      <li>알고리즘 결과를 <b>병원 전문가의 실제 수기 일정과 1:1 비교</b>(같은 기간·같은 자원) — "사람 대비 얼마나 나은가"를 직접 측정한 드문 설계.</li>
+      <li>의사결정지원 관점 제안: 단일 정답 대신 <b>HC·SA 두 해를 모두 제시하고 실무자가 선택</b>하게 하는 운영 방식.</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">📊</span>성능 지표 — 전부 수치로</div>
+    <p><b>패널티 점수 (낮을수록 좋음; Table 2~4):</b></p>
+    <table>
+      <tr><th>과 (수술 수)</th><th>병원 수기</th><th>HC</th><th>SA</th><th>PS</th></tr>
+      <tr><td>비만수술 (198)</td><td class="num down">643,550</td><td class="num arrow">0</td><td class="num">5,100</td><td class="num down">42,702</td></tr>
+      <tr><td>비뇨기과 (133)</td><td class="num down">37,030</td><td class="num arrow">0</td><td class="num">1,240</td><td class="num down">30,000</td></tr>
+      <tr><td>소아성형 (98)</td><td class="num down">14,760</td><td class="num arrow">0</td><td class="num">30</td><td class="num down">53,108</td></tr>
+    </table>
+    <p><b>배정 상세 (수기 vs HC vs SA):</b></p>
+    <table>
+      <tr><th>지표</th><th>병원 수기</th><th>HC</th><th>SA</th></tr>
+      <tr><td>마감 내(무패널티) 수술</td><td>비만 4(2%) · 비뇨 91(68.4%) · 소아 81(81%)</td><td class="arrow">190(96%) · 127(95.5%) · 98(100%)</td><td>164(82.8%) · 128(96.2%) · 64(65%)</td></tr>
+      <tr><td>총 배정률 (429건 중)</td><td>429 (100%, 단 패널티 거대)</td><td class="num">415 (96.7%)</td><td class="num">362 (84.4%)</td></tr>
+      <tr><td>미배정</td><td class="num">0</td><td>비만 8 · 비뇨 6 · 소아 0 (계 14)</td><td>비만 33 · 비뇨 1 · 소아 33 (계 67)</td></tr>
+    </table>
+    <p class="mini">※ 소아성형 수기 무패널티 81건의 비율은 원문 표3 기준 81%로 표기 (원문 표4에는 83%로 인쇄된 내부 불일치가 있음; 산술상 81/98 = 82.7%).</p>
+    <ul class="clean">
+      <li><b>수렴·속도:</b> HC·SA 모두 <b>약 100회 반복에서 안정</b>, 실행 약 <b>30초</b> — 실무 투입 가능한 속도.</li>
+      <li>대부분의 수술을 실제 시행일보다 <b>더 이른 날짜에 배정 가능</b>했음(Figures 2·3).</li>
+      <li><b>PS(입자군집)는 패널티 3만~5.3만으로 부적합 판정 → 폐기.</b> 좋은 초기해를 활용 못 하는 구조 + 계산비용 과다가 원인으로 지목.</li>
+    </ul>
+    <div class="callout c-warn">⚠️ 공정하게 읽기: HC의 "패널티 0"에는 이면이 있다 — <b>미배정 14건은 패널티 계산에서 빠진다</b>(최대 교대시간보다 긴 수술 등은 예외 처리로 전문가에게 넘김). 병원 수기는 전부 욱여넣는 대신 패널티가 폭발했고, 알고리즘은 일부를 안 넣는 대신 패널티를 0으로 만든 것. 저자도 이를 단점으로 보지 않는다고 명시했지만, 지표 해석 시 주의.</div>
+    <div class="callout c-note">🔍 흥미 포인트: <b>이 데이터에선 단순 HC가 SA보다 좋았다</b>(패널티도 배정률도). 논문이 밝힌 사실은 "초기해가 이미 매우 만족스러웠다"까지이고, '나쁜 해도 받아들이는 SA의 탐험이 오히려 보탬이 안 됐다'는 우리의 해석이다. — 우리 프로젝트에서 SA 초기해를 위상정렬로 주는 것과 같은 교훈: <b>좋은 초기해 + 단순 지역탐색이 의외로 강하다.</b></div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">✅</span>고려한 사항</div>
+    <ul class="clean">
+      <li>환자 <b>대기 시작일·우선순위</b>(의학적+대기시간 요인), <b>마감(보장 최대 응답시간)</b></li>
+      <li>과별 시간블록·슬롯 수, 방 용량, 슬롯당 최대 배정 수</li>
+      <li><b>청소·준비(턴오버) 시간</b>을 수술시간에 포함, 모든 방이 매일 열리진 않음(요일별 가용)</li>
+      <li>일별 가용 자원(방 수·의료진 수) 계획 반영, 같은 기간 내 환자 중복 수술 금지, 과별 독립 운영</li>
+    </ul>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🚫</span>고려하지 않은 사항 (논문이 한계·향후과제로 명시)</div>
+    <div class="callout c-warn">
+      <ul class="clean">
+        <li><b>개별 의료인력 미모델</b> — "모든 외과의가 어떤 수술이든 가능" 가정. 향후과제: 기간별 외과의·간호사·마취과 인력 제약 추가</li>
+        <li><b>수술시간 추정의 부정확</b> — 과거 이력의 사분위간 평균(IQM) 사용. 향후과제: 머신러닝 예측으로 대체</li>
+        <li><b>서브전문과목 미구분</b> — ICD-10 코드와 과목 매핑 필요(향후과제)</li>
+        <li><b>단일 병원 · 3개 과 · 2019년 데이터</b> — 다른 기관 일반화 미검증(향후과제 1순위로 명시)</li>
+        <li>응급 환자 미고려 — 명시된 한계 항목은 아니나 연구 대상이 대기리스트(예정 수술)뿐. 최대 교대시간을 넘는 긴 수술은 배정 불가 → 예외 처리</li>
+        <li>"패널티 0이 정말 최선인가"(더 높은 패널티를 감수하는 안이 일정 운영엔 오히려 나을 수 있는지)는 미검토 — 향후과제</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="block"><div class="bt"><span class="emoji">🪞</span>우리 프로젝트와의 연결</div>
+    <p class="mini">우리 <code>sa.py</code>와 같은 SA 계열(같은 Metropolis 1953 수용규칙·온도 냉각)이며, "패널티 = 우선순위×지연일"은 우리 Σwait와 같은 '대기 비용' 사상. 그리고 "좋은 초기해(우리는 위상정렬) 위에서는 단순 지역탐색도 강하다"는 교훈이 우리 SA 설계(위상정렬 초기해 + swap 이웃)와 정확히 공명한다.</p>
+  </div>
+</div>
+
+<!-- ============ MATRIX ============ -->
+<h2 class="sec" id="matrix">⑧ 통합 비교표 (5편)</h2>
+<table>
+  <tr><th style="width:16%">항목</th><th>1번 CEJOR 2022</th><th>2번 AMM 2022</th><th>3번 MDPI 2019</th><th>GA 논문 C&amp;IE 2026</th><th>SA 논문 JMIR 2025</th></tr>
+  <tr><td><b>저자</b></td><td>Gür·Pınarbaşı·Alakaş·Eren</td><td>Ghandehari·Kianfar</td><td>Gür·Eren·Alakaş</td><td>Guo·Wang·Wei·Punnen</td><td>Lopes·Guimarães·Duarte·Santos</td></tr>
+  <tr><td><b>주 방법</b></td><td>CP+GP+확률제약</td><td>MILP·CP·CPCG(열생성)</td><td>CP+GP</td><td>MILP 4종·CP vs GA·ACO</td><td>HC·SA vs PS</td></tr>
+  <tr><td><b>데이터</b></td><td>실병원(100건·5실)</td><td>무작위 40개(15~30건)</td><td>실병원(120건·8실)</td><td>벤치마크 65 + 실병원 10일</td><td>실병원 3과(429건·256슬롯)</td></tr>
+  <tr><td><b>목적</b></td><td>가동률·팀 균형(편차 최소)</td><td>비용 3종 합 최소</td><td>가동률·균형·선호(편차 최소)</td><td>makespan 최소</td><td>마감초과 패널티 최소</td></tr>
+  <tr><td><b>수술시간</b></td><td class="arrow">확률(α·cv) ✔</td><td class="down">고정</td><td class="down">고정(평균)</td><td>고정(+SAA 확률 확장)</td><td class="down">고정(IQM 추정)</td></tr>
+  <tr><td><b>인력 모델</b></td><td class="arrow">4역할 구분 ✔</td><td>외과의만(유휴비)</td><td>과목 단위</td><td class="arrow">6자원·인원 차등 ✔</td><td class="down">미모델(누구나 가능)</td></tr>
+  <tr><td><b>응급</b></td><td class="down">✗</td><td class="down">✗(전용방 가정)</td><td class="down">✗</td><td class="down">✗</td><td class="down">✗</td></tr>
+  <tr><td><b>대표 수치</b></td><td>71→82% 가동률</td><td>MILP 3,600초 실패 vs CPCG ≤3분 최적</td><td>52→95% 가동률, 초과 45→0블록</td><td>CP 75/75 최적 vs GA 0~7.5% gap</td><td>총 패널티 695,340→0(HC)/6,370(SA)</td></tr>
+  <tr><td><b>비교 기준</b></td><td>결정론 vs 확률 모델</td><td>4개 방법 간</td><td><b>수기 현행</b> vs 모델</td><td>7개 방법 간 + 실데이터</td><td><b>수기 현행</b> vs 3개 알고리즘</td></tr>
+  <tr><td><b>접근성</b></td><td>유료</td><td>기관 구독</td><td class="arrow">무료(오픈액세스)</td><td>기관 구독</td><td class="arrow">무료(CC-BY)</td></tr>
+</table>
+
+<!-- ============ SYNTH ============ -->
+<h2 class="sec" id="synth">⑨ 다섯 논문 관통 주제 + 우리 프로젝트</h2>
+<div class="callout c-note">
+  <p style="margin-top:0"><b>관통하는 줄기 셋:</b></p>
+  <ul class="clean">
+    <li><b>① 알고리즘 &gt; 사람:</b> 수기와 직접 비교한 두 편 모두 압도적 — 가동률 52→95%(3번), 총 패널티 695,340→0(SA 논문·HC 기준).</li>
+    <li><b>② 정확해 안에서는 CP가 강자:</b> 2번(CP·CPCG가 MILP 압도)과 GA 논문(CP가 MILP 4종 + GA·ACO 전부 격파)이 독립적으로 같은 결론.</li>
+    <li><b>③ 공통의 다음 과제 = 불확실성과 인력:</b> 2번·3번·SA 논문 모두 "수술시간 변동"과 "개별 인력"을 한계로 남겼고, 1번이 그 둘을 정면으로 다뤘다(71→82%).</li>
+  </ul>
+</div>
+<h3>🪞 우리 프로젝트(CP‑SAT vs GA vs SA) 거울</h3>
+<table>
+  <tr><th>우리 현재</th><th>논문이 보여주는 근거/다음 단계</th></tr>
+  <tr><td>CP‑SAT(RCPSP)를 "정답·기준"으로 사용</td><td class="arrow">2번 + GA 논문: "큰 문제에서 CP가 MILP·GA·ACO보다 품질·속도 모두 우위" — 설계 정당화 ✔</td></tr>
+  <tr><td>목표 = Σwait(환자 대기) 최소화</td><td class="arrow">2번 민감도: "환자 대기비용이 가장 민감 → 1순위로 두라" / SA 논문 패널티도 같은 사상 ✔</td></tr>
+  <tr><td>SA: 위상정렬 초기해 + swap 이웃</td><td class="arrow">SA 논문: "좋은 초기해 위에선 단순 지역탐색이 SA만큼·이상으로 강함" — 우리 설계와 공명 ✔</td></tr>
+  <tr><td>수술시간 <b>고정</b></td><td>1번처럼 확률제약(α·cv) 도입이 다음 단계 (71→82% 개선 여지)</td></tr>
+  <tr><td><b>staff 통짜 풀</b></td><td>1번(4역할) 또는 GA 논문(6자원·인원 차등)처럼 역할 분리가 다음 단계</td></tr>
+  <tr><td>응급 미고려</td><td>5편 전부 같은 공백 — 분야 공통 미해결 과제(우리만의 약점 아님)</td></tr>
+</table>
+
+<div class="foot">
+  <p>본 정리는 다섯 논문의 <b>원문 PDF/본문 수치를 직접 추출·검증</b>해 작성했습니다.
+  (1번 CEJOR 31:1061–1085 · 2번 Applied Mathematical Modelling 2022 · 3번 Mathematics 7(3):251 · GA 논문 Computers &amp; Industrial Engineering 216:111976 · SA 논문 JMIR Medical Informatics 13:e57231)</p>
+  <p>※ 모든 수치는 각 논문의 결과 표(Table)에서 발췌. "고려하지 않은 사항"은 각 논문의 가정(assumptions)·한계(limitations) 절에 명시된 내용 기준.</p>
+</div>
+
+</div>
+</body>
+</html>
