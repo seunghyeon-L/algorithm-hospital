@@ -146,6 +146,32 @@ export default function FloorPlan2D({ instance, result }: Props) {
     return Object.keys(DEPT_META).filter((d) => set.has(d));
   }, [tasks]);
 
+  // 과별 집도의(전공의) 정원 — resource_capacities의 surg_* 키(외과11·정형7…)
+  const surgeonCaps = useMemo(() => {
+    const caps: Record<string, number> = {};
+    for (const [k, v] of Object.entries(instance.resource_capacities)) {
+      if (k.startsWith("surg_") && v > 0) caps[k] = v;
+    }
+    return caps;
+  }, [instance]);
+  const surgeonDepts = useMemo(
+    () => Object.keys(DEPT_META).filter((d) => (surgeonCaps[d] ?? 0) > 0),
+    [surgeonCaps]
+  );
+
+  // 시각 t에 집도 중인 과별 집도의 수(활성 SURG가 소비하는 surg_* 자원; 응급은 외과 집도의)
+  const surgeonsInUse = useMemo(() => {
+    const m: Record<string, number> = {};
+    if (!schedule) return m;
+    for (const a of Object.values(schedule.assignments)) {
+      if (a.start <= t && t < a.end) {
+        const res = instance.tasks[a.task_id]?.resources ?? {};
+        for (const k of Object.keys(res)) if (k.startsWith("surg_")) m[k] = (m[k] ?? 0) + 1;
+      }
+    }
+    return m;
+  }, [schedule, instance, t]);
+
   // ---- 반응형 치수 계산: 보드 폭을 채우도록 수술실 크기 산출 ----
   const perRow = Math.min(rooms.length, ROOMS_PER_ROW) || 1;
   const roomW = clamp((boardW - PAD * 2 - (perRow - 1) * GAP) / perRow, 220, 520);
@@ -437,7 +463,7 @@ export default function FloorPlan2D({ instance, result }: Props) {
             className="absolute text-base font-semibold text-slate-500"
             style={{ left: PAD, top: poolLabelY }}
           >
-            🛋️ 의료진 대기실
+            🛋️ 간호인력 대기실
           </div>
           <div
             className="absolute rounded-xl border border-dashed border-slate-300 bg-white/40"
@@ -476,9 +502,51 @@ export default function FloorPlan2D({ instance, result }: Props) {
         </div>
       </div>
 
+      {/* 과별 집도의(전공의) 가용 현황 */}
+      {surgeonDepts.length > 0 && (
+        <div className="bg-white border rounded-xl px-4 py-3 space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-700">
+            🩺 과별 집도의(전공의) 가용 현황
+            <span className="text-xs font-normal text-slate-400">
+              진한 점 = 집도 중 · 옅은 점 = 대기 · 색 = 전공과
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+            {surgeonDepts.map((d) => {
+              const cap = surgeonCaps[d];
+              const used = surgeonsInUse[d] ?? 0;
+              const c = deptColor(d);
+              return (
+                <div key={d} className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium w-[68px]" style={{ color: c }}>
+                    {DEPT_META[d]?.ko ?? d}
+                  </span>
+                  <span className="flex flex-wrap gap-1 max-w-[220px]">
+                    {Array.from({ length: cap }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="inline-block w-3 h-3 rounded-full"
+                        style={{
+                          background: i < used ? c : "transparent",
+                          border: `1.5px solid ${c}`,
+                          opacity: i < used ? 1 : 0.35,
+                          boxShadow: i < used ? `0 0 0 2px ${c}33` : "none",
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <span className="text-xs text-slate-500 font-mono">{used}/{cap}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <p className="text-sm text-gray-500">
-        💡 수술실 외곽선과 의료진(간호인력) 점 색은 <b>그 수술의 전공과</b>를 나타냅니다(응급=빨강).
-        간호인력이 대기실에서 해당 전공과 수술실로 이동해 작업하고, 끝나면 다음 수술실로 옮겨갑니다.
+        💡 수술실 외곽선·의료진(간호인력) 점 색은 <b>그 수술의 전공과</b>를 나타냅니다(응급=빨강).
+        아래 <b>과별 집도의(전공의)</b> 패널은 과별 정원과 지금 집도 중인 인원을 색으로 보여줍니다.
+        간호인력은 과 구분이 없는 공용 풀이라 대기 중엔 회색입니다.
         알고리즘을 바꿔가며 같은 인스턴스에서 동선·점유가 어떻게 달라지는지 비교해 보세요.
       </p>
     </section>
