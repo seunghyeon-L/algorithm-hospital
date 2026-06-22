@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CompareResponse, InstanceOut } from "./lib/api";
 import { API_BASE, createInstance, compareAlgos } from "./lib/api";
 import SummaryCards from "./components/SummaryCards";
@@ -152,7 +152,7 @@ export default function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
             <NumberField label="환자 수 (각 5단계)" min={5} max={40} step={1} value={form.n_patients} onChange={(v) => updateForm("n_patients", v)} />
             <NumberField label="시드 (재현용)" min={0} max={9999} step={1} value={form.seed} onChange={(v) => updateForm("seed", v)} />
-            <NumberField label="시간예산 (초/알고)" min={1} max={60} step={1} value={form.time_limit_sec} onChange={(v) => updateForm("time_limit_sec", v)} />
+            <NumberField label="시간예산 (초/알고리즘)" min={1} max={60} step={1} value={form.time_limit_sec} onChange={(v) => updateForm("time_limit_sec", v)} />
             <ToggleField label="목적함수" value={form.weighted} onText="KTAS 가중" offText="무가중 Σwait" onChange={(v) => updateForm("weighted", v)} />
             <NumberField label="응급 수 (0=정적·1↑=동적)" min={0} max={10} step={1} value={form.n_emergency} onChange={(v) => updateForm("n_emergency", v)} />
           </div>
@@ -279,6 +279,15 @@ function NumberField({
   step: number;
   onChange: (v: number) => void;
 }) {
+  // 입력칸을 문자열로 보유해 빈칸을 허용한다(0을 지울 수 있게).
+  // 비운 채 두면 값은 0으로 처리하고, 포커스를 떠날 때 0을 채워 넣는다.
+  const [text, setText] = useState<string>(String(value));
+  useEffect(() => {
+    // 외부에서 value가 바뀌면(리셋 등) 동기화 — 단, 현재 입력 숫자와 같으면 빈칸 유지
+    const cur = text.trim() === "" ? 0 : Number(text);
+    if (cur !== value) setText(String(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-medium text-gray-500">{label}</label>
@@ -287,8 +296,18 @@ function NumberField({
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        value={text}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          onChange(raw.trim() === "" ? 0 : Number(raw));
+        }}
+        onBlur={() => {
+          if (text.trim() === "") {
+            setText("0");
+            onChange(0);
+          }
+        }}
         className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
       />
     </div>
