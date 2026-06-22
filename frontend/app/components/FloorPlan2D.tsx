@@ -1,10 +1,10 @@
 "use client";
 
-// FloorPlan2D — 2D 평면도 동선 시뮬레이션.
-// 수술실을 박스로, 의료진(스태프)을 점으로 표현한다. 선택한 알고리즘의 일정(schedule)을
-// 시간축으로 재생하면, 각 시점의 활성 수술(start<=t<end)이 배정된 수술실이 점등되고
-// 스태프 점이 대기실(pool)에서 해당 수술실로 이동(CSS transition)해 작업한 뒤
-// 다음 수술실로 옮겨가는 모습을 가시화한다. 외부 라이브러리 없이 div+CSS로 구현.
+// FloorPlan2D — 환자 동선 시뮬레이션(구역형).
+// 환자가 [수술 전 준비구역] → [수술실(집도)] → [회복실] → [퇴실] 4개 구역을 시간축에 따라
+// 흐른다(PRECHECK∥PREP→SURG→REC→DISCHARGE). 각 환자는 현재 활성 단계가 속한 구역에 점으로
+// 표시되고, 집도(SURG) 중에는 배정된 수술실 박스 안에 위치한다. 색은 환자의 전공과.
+// 단계 사이 대기는 다음 구역에서 옅게 표시. 외부 라이브러리 없이 div+CSS로 구현하며,
 // 보드는 컨테이너 전체 폭을 채우도록 반응형으로 크기를 계산한다.
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,7 +20,7 @@ const ALGO_LABELS: Record<AlgoKey, string> = {
   "CP-SAT": "CP-SAT",
 };
 
-// 전공과별 색상 — 수술실 외곽선·의료진(간호인력) 점·범례에 사용.
+// 전공과별 색상 — 수술실 외곽선·환자 점·집도의 패널·범례에 사용.
 // 라벨("유리체절제술·PRECHECK")의 수술명(앞부분)으로 전공과를 판별한다.
 // (백엔드 jnuh5.JNUH5_SURGERY_TYPES의 9개 과 + 응급과 동기화)
 const DEPT_META: Record<string, { ko: string; color: string }> = {
@@ -59,14 +59,42 @@ function deptColor(dept: string): string {
   return DEPT_META[dept]?.color ?? DEFAULT_DEPT_COLOR;
 }
 
-interface ActiveTask {
-  task_id: string;
-  room: string;
-  start: number;
-  end: number;
-  staff: number;
-  label: string | null;
-  dept: string;
+// ---------------------------------------------------------------------------
+// 환자 단계/구역 모델
+// ---------------------------------------------------------------------------
+const STAGE_ORDER = ["PRECHECK", "PREP", "SURG", "REC", "DISCHARGE"];
+
+interface PStage { start: number; end: number; room: string | null; }
+interface PView { pid: string; dept: string; name: string; stages: Record<string, PStage>; }
+type Zone = "arrival" | "prep" | "or" | "pacu" | "discharge" | "done";
+
+const ZONE_KO: Record<string, string> = {
+  prep: "수술 전 준비", or: "수술실(집도)", pacu: "회복실", discharge: "퇴실",
+};
+
+// 시각 t에서 환자의 위치(구역). PRECHECK∥PREP→SURG→REC→DISCHARGE 순서를 따른다.
+// 단계가 끝나고 다음이 아직이면 "다음 구역에서 대기(active=false)"로 흐른다.
+function locOf(pv: PView, t: number): { zone: Zone; room: string | null; active: boolean } {
+  const started = STAGE_ORDER.filter((s) => pv.stages[s] && pv.stages[s].start <= t);
+  if (started.length === 0) return { zone: "arrival", room: null, active: false };
+  const F = started[started.length - 1];           // 가장 진행된(높은 순서) 단계
+  const ft = pv.stages[F];
+  if (F === "PRECHECK" || F === "PREP") {
+    const active =
+      (pv.stages["PRECHECK"] && t < pv.stages["PRECHECK"].end) ||
+      (pv.stages["PREP"] && t < pv.stages["PREP"].end);
+    return { zone: "prep", room: null, active: !!active };   // 준비 중 또는 수술실 대기
+  }
+  if (F === "SURG") {
+    if (t < ft.end) return { zone: "or", room: ft.room, active: true };
+    return { zone: "pacu", room: null, active: false };       // 집도 끝 → 회복실로 이동/대기
+  }
+  if (F === "REC") {
+    if (t < ft.end) return { zone: "pacu", room: null, active: true };
+    return { zone: "discharge", room: null, active: false };  // 회복 끝 → 퇴실 대기
+  }
+  if (t < ft.end) return { zone: "discharge", room: null, active: true };
+  return { zone: "done", room: null, active: false };
 }
 
 interface Props {
@@ -74,9 +102,8 @@ interface Props {
   result: CompareResponse;
 }
 
-const GAP = 20;
-const PAD = 20;
-const ROOMS_PER_ROW = 5; // 한 줄 최대 수술실 수
+const PAD = 16;
+const GAP = 14;
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -105,46 +132,37 @@ export default function FloorPlan2D({ instance, result }: Props) {
 
   const schedule = result.results[algo]?.schedule;
   const makespan = schedule?.makespan ?? 0;
-  const staffCap = instance.resource_capacities.staff ?? 0;
 
+  // 수술실 목록 (집도 SURG만 점유; 정원 = resource_capacities.room)
   const rooms = useMemo(() => {
-    const set = new Set<string>();
-    const nRooms = instance.resource_capacities.room ?? 0;
-    for (let i = 0; i < nRooms; i++) set.add(`room-${i + 1}`);
-    if (schedule) {
-      for (const a of Object.values(schedule.assignments)) {
-        if (a.room) set.add(a.room);
-      }
-    }
-    return Array.from(set).sort((a, b) => {
-      const na = Number(a.replace(/\D/g, "")) || 0;
-      const nb = Number(b.replace(/\D/g, "")) || 0;
-      return na - nb;
-    });
-  }, [instance, schedule]);
+    const n = instance.resource_capacities.room ?? 0;
+    return Array.from({ length: n }, (_, i) => `room-${i + 1}`);
+  }, [instance]);
 
-  const tasks = useMemo<ActiveTask[]>(() => {
+  // 환자별 5단계 일정
+  const patients = useMemo<PView[]>(() => {
     if (!schedule) return [];
-    // 5단계 모델에서 수술실을 점유하는 작업은 SURG뿐 — room이 배정된 작업만 평면도에 표시
-    return Object.values(schedule.assignments)
-      .filter((a) => !!a.room)
-      .map((a) => ({
-        task_id: a.task_id,
-        room: a.room as string,
-        start: a.start,
-        end: a.end,
-        staff: instance.tasks[a.task_id]?.resources?.staff ?? 0,
-        label: instance.tasks[a.task_id]?.label ?? null,
-        dept: deptOfLabel(instance.tasks[a.task_id]?.label ?? null),
-      }));
+    const m = new Map<string, PView>();
+    for (const a of Object.values(schedule.assignments)) {
+      const tk = instance.tasks[a.task_id];
+      if (!tk || !tk.patient_id) continue;
+      const stage = a.task_id.split("_").pop() as string;
+      let pv = m.get(tk.patient_id);
+      if (!pv) {
+        pv = { pid: tk.patient_id, dept: deptOfLabel(tk.label), name: (tk.label ?? "").split("·")[0], stages: {} };
+        m.set(tk.patient_id, pv);
+      }
+      pv.stages[stage] = { start: a.start, end: a.end, room: a.room ?? null };
+    }
+    return [...m.values()].sort((a, b) => (a.pid < b.pid ? -1 : 1));
   }, [schedule, instance]);
 
   // 현재 일정에 등장하는 전공과(범례용, DEPT_META 정의 순서)
   const deptsPresent = useMemo(() => {
     const set = new Set<string>();
-    for (const task of tasks) if (task.dept) set.add(task.dept);
+    for (const pv of patients) if (pv.dept) set.add(pv.dept);
     return Object.keys(DEPT_META).filter((d) => set.has(d));
-  }, [tasks]);
+  }, [patients]);
 
   // 과별 집도의(전공의) 정원 — resource_capacities의 surg_* 키(외과11·정형7…)
   const surgeonCaps = useMemo(() => {
@@ -158,8 +176,6 @@ export default function FloorPlan2D({ instance, result }: Props) {
     () => Object.keys(DEPT_META).filter((d) => (surgeonCaps[d] ?? 0) > 0),
     [surgeonCaps]
   );
-
-  // 시각 t에 집도 중인 과별 집도의 수(활성 SURG가 소비하는 surg_* 자원; 응급은 외과 집도의)
   const surgeonsInUse = useMemo(() => {
     const m: Record<string, number> = {};
     if (!schedule) return m;
@@ -172,28 +188,41 @@ export default function FloorPlan2D({ instance, result }: Props) {
     return m;
   }, [schedule, instance, t]);
 
-  // ---- 반응형 치수 계산: 보드 폭을 채우도록 수술실 크기 산출 ----
-  const perRow = Math.min(rooms.length, ROOMS_PER_ROW) || 1;
-  const roomW = clamp((boardW - PAD * 2 - (perRow - 1) * GAP) / perRow, 220, 520);
-  const roomH = clamp(Math.round(roomW * 0.62), 180, 300);
-  const dot = clamp(Math.round(roomW / 11), 22, 34); // 의료진 점 지름
-  const nRowsRoom = Math.ceil(rooms.length / perRow);
-  const roomsAreaH = nRowsRoom * roomH + (nRowsRoom - 1) * GAP;
-  const poolLabelY = PAD + roomsAreaH + GAP + 8;
-  const poolY = poolLabelY + 26;
-  const poolH = Math.max(96, dot * 2 + 44);
-  const boardH = poolY + poolH + PAD;
+  // ---- 반응형 구역 레이아웃 계산 (세로 흐름: 준비→수술실→회복→퇴실) ----
+  const perRoomRow = boardW < 760 ? 3 : boardW < 1120 ? 4 : 6;
+  const nRoomRows = Math.max(1, Math.ceil(rooms.length / perRoomRow));
+  const roomW = clamp((boardW - 2 * PAD - (perRoomRow - 1) * GAP) / perRoomRow, 150, 360);
+  const roomH = clamp(Math.round(roomW * 0.5), 96, 150);
+  const dot = clamp(Math.round(boardW / 58), 22, 30);
+  const labelH = 24;
+  const dotRowH = dot + 8;
+  const stripContentH = 2 * dotRowH + 6;        // 환자 점 2줄
 
+  const yPrepLabel = PAD;
+  const yPrepContent = yPrepLabel + labelH;
+  const prepZoneH = labelH + stripContentH;
+  const yOrLabel = yPrepLabel + prepZoneH + GAP;
+  const yOrContent = yOrLabel + labelH;
+  const orContentH = nRoomRows * roomH + (nRoomRows - 1) * GAP;
+  const orZoneH = labelH + orContentH;
+  const yPacuLabel = yOrLabel + orZoneH + GAP;
+  const yPacuContent = yPacuLabel + labelH;
+  const pacuZoneH = labelH + stripContentH;
+  const yDischLabel = yPacuLabel + pacuZoneH + GAP;
+  const yDischContent = yDischLabel + labelH;
+  const dischZoneH = labelH + stripContentH;
+  const boardH = yDischLabel + dischZoneH + PAD;
+
+  const roomIndex = useMemo(() => {
+    const m = new Map<string, number>();
+    rooms.forEach((r, i) => m.set(r, i));
+    return m;
+  }, [rooms]);
   const roomRect = (room: string) => {
-    const idx = rooms.indexOf(room);
-    const r = Math.floor(idx / perRow);
-    const c = idx % perRow;
-    return {
-      x: PAD + c * (roomW + GAP),
-      y: PAD + r * (roomH + GAP),
-      w: roomW,
-      h: roomH,
-    };
+    const i = roomIndex.get(room) ?? 0;
+    const c = i % perRoomRow;
+    const r = Math.floor(i / perRoomRow);
+    return { x: PAD + c * (roomW + GAP), y: yOrContent + r * (roomH + GAP), w: roomW, h: roomH };
   };
 
   useEffect(() => {
@@ -230,91 +259,48 @@ export default function FloorPlan2D({ instance, result }: Props) {
     };
   }, [playing, speed, makespan]);
 
-  const activeByRoom = useMemo(() => {
-    const m = new Map<string, ActiveTask>();
-    for (const task of tasks) {
-      if (task.start <= t && t < task.end) m.set(task.room, task);
-    }
-    return m;
-  }, [tasks, t]);
-
-  // 스태프 안정 배치(place)
-  const placeRef = useRef<string[]>([]);
-  if (placeRef.current.length !== staffCap) {
-    placeRef.current = Array.from({ length: staffCap }, () => "pool");
-  }
-  const positions = useMemo(() => {
-    const place = placeRef.current.slice();
-    const need = new Map<string, number>();
-    for (const [room, task] of activeByRoom) need.set(room, task.staff);
-
-    const countInRoom = new Map<string, number>();
-    for (let i = 0; i < staffCap; i++) {
-      const p = place[i];
-      if (p !== "pool" && need.has(p)) {
-        const used = countInRoom.get(p) ?? 0;
-        if (used < (need.get(p) ?? 0)) {
-          countInRoom.set(p, used + 1);
-          continue;
-        }
+  // 시각 t의 환자 위치·수술실 점유 계산
+  const layout = useMemo(() => {
+    const stripPerRow = Math.max(1, Math.floor((boardW - 2 * PAD) / (dot + 8)));
+    const slots: Record<string, number> = { prep: 0, pacu: 0, discharge: 0 };
+    const dots: { pid: string; dept: string; left: number; top: number; zone: Zone; active: boolean }[] = [];
+    const roomOcc = new Map<string, { pid: string; dept: string; name: string; stage: PStage }>();
+    for (const pv of patients) {
+      const loc = locOf(pv, t);
+      if (loc.zone === "arrival" || loc.zone === "done") continue;
+      if (loc.zone === "or" && loc.room) {
+        roomOcc.set(loc.room, { pid: pv.pid, dept: pv.dept, name: pv.name, stage: pv.stages["SURG"] });
+        const rect = roomRect(loc.room);
+        dots.push({ pid: pv.pid, dept: pv.dept, zone: "or", active: true,
+          left: rect.x + rect.w / 2 - dot / 2, top: rect.y + rect.h - dot - 6 });
+      } else {
+        const z = loc.zone as "prep" | "pacu" | "discharge";
+        const slot = slots[z]++;
+        const col = slot % stripPerRow;
+        const row = Math.floor(slot / stripPerRow);
+        const baseY = z === "prep" ? yPrepContent : z === "pacu" ? yPacuContent : yDischContent;
+        dots.push({ pid: pv.pid, dept: pv.dept, zone: z, active: loc.active,
+          left: PAD + col * (dot + 8), top: baseY + row * dotRowH });
       }
-      place[i] = "pool";
     }
-    for (const [room, demand] of need) {
-      let have = countInRoom.get(room) ?? 0;
-      for (let i = 0; i < staffCap && have < demand; i++) {
-        if (place[i] === "pool") {
-          place[i] = room;
-          have++;
-        }
-      }
-      countInRoom.set(room, have);
-    }
-    placeRef.current = place;
-
-    const byPlace = new Map<string, number[]>();
-    place.forEach((p, i) => {
-      const arr = byPlace.get(p) ?? [];
-      arr.push(i);
-      byPlace.set(p, arr);
-    });
-    const pos: { left: number; top: number }[] = new Array(staffCap);
-    const perRowRoom = Math.max(2, Math.floor((roomW - 24) / (dot + 8)));
-    const perRowPool = Math.max(1, Math.floor((boardW - PAD * 2) / (dot + 10)));
-    for (const [p, idxs] of byPlace) {
-      idxs.forEach((staffIdx, slot) => {
-        if (p === "pool") {
-          const rr = Math.floor(slot / perRowPool);
-          const cc = slot % perRowPool;
-          pos[staffIdx] = {
-            left: PAD + cc * (dot + 10),
-            top: poolY + 30 + rr * (dot + 6),
-          };
-        } else {
-          const rect = roomRect(p);
-          const rr = Math.floor(slot / perRowRoom);
-          const cc = slot % perRowRoom;
-          pos[staffIdx] = {
-            left: rect.x + 16 + cc * (dot + 8),
-            top: rect.y + Math.round(roomH * 0.46) + rr * (dot + 6),
-          };
-        }
-      });
-    }
-    return pos;
+    return { dots, roomOcc, counts: { prep: slots.prep, pacu: slots.pacu, discharge: slots.discharge, or: roomOcc.size } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeByRoom, staffCap, rooms, roomW, roomH, dot, boardW, poolY]);
+  }, [patients, t, boardW, dot, roomW, roomH, perRoomRow, yPrepContent, yPacuContent, yDischContent, yOrContent]);
 
   if (!schedule) return null;
 
-  const staffInUse = Array.from(activeByRoom.values()).reduce((s, x) => s + x.staff, 0);
-  const activeCount = activeByRoom.size;
   const fmt = (x: number) => Math.round(x);
+  const zones = [
+    { key: "prep", y: yPrepLabel, h: prepZoneH, label: "🩺 수술 전 준비구역", sub: "확인·마취준비(PRECHECK∥PREP)", tint: "#eef2ff", count: layout.counts.prep },
+    { key: "or", y: yOrLabel, h: orZoneH, label: "🏥 수술실 — 집도(SURG)", sub: `${rooms.length}실`, tint: "#f8fafc", count: layout.counts.or },
+    { key: "pacu", y: yPacuLabel, h: pacuZoneH, label: "🛏 회복실 (PACU)", sub: "REC", tint: "#ecfdf5", count: layout.counts.pacu },
+    { key: "discharge", y: yDischLabel, h: dischZoneH, label: "🚪 퇴실 구역", sub: "DISCHARGE", tint: "#fff7ed", count: layout.counts.discharge },
+  ];
 
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-2xl font-bold">2D 평면도 동선 시뮬레이션</h2>
+        <h2 className="text-2xl font-bold">환자 동선 시뮬레이션</h2>
         <div className="flex gap-1.5">
           {(["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as AlgoKey[]).map((a) => (
             <button
@@ -374,16 +360,19 @@ export default function FloorPlan2D({ instance, result }: Props) {
         </label>
       </div>
 
-      {/* 실시간 지표 */}
+      {/* 실시간 지표 (단계별 인원) */}
       <div className="flex flex-wrap gap-3 text-base">
+        <span className="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+          준비 중: <b>{layout.counts.prep}</b>
+        </span>
         <span className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-          진행 수술: <b>{activeCount}</b>건
+          집도 중: <b>{layout.counts.or}</b> / {rooms.length}실
         </span>
         <span className="px-4 py-2 rounded-lg bg-green-50 text-green-700 border border-green-200">
-          의료진 사용: <b>{staffInUse}</b> / {staffCap}명
+          회복 중: <b>{layout.counts.pacu}</b>
         </span>
-        <span className="px-4 py-2 rounded-lg bg-gray-50 text-gray-700 border">
-          수술실: <b>{rooms.length}</b>개
+        <span className="px-4 py-2 rounded-lg bg-orange-50 text-orange-700 border border-orange-200">
+          퇴실 중: <b>{layout.counts.discharge}</b>
         </span>
       </div>
 
@@ -397,60 +386,70 @@ export default function FloorPlan2D({ instance, result }: Props) {
               <span className="text-slate-700">{DEPT_META[d].ko}</span>
             </span>
           ))}
-          <span className="text-slate-400 sm:ml-auto">수술실 외곽선 · 의료진 점 = 해당 수술의 전공과</span>
+          <span className="text-slate-400 sm:ml-auto">환자 점 · 수술실 외곽선 = 해당 환자의 전공과</span>
         </div>
       )}
 
-      {/* 평면도 보드 (전체 폭) */}
+      {/* 구역형 평면도 보드 (전체 폭) */}
       <div ref={wrapRef} className="w-full">
         <div
           className="relative bg-slate-100 rounded-xl border overflow-hidden"
           style={{ width: "100%", height: boardH }}
         >
-          {/* 수술실 박스 */}
+          {/* 구역 배경 + 라벨 */}
+          {zones.map((z) => (
+            <div
+              key={z.key}
+              className="absolute rounded-lg border border-slate-200"
+              style={{ left: PAD - 8, top: z.y - 2, width: boardW - (PAD - 8) * 2, height: z.h + 4, background: z.tint }}
+            >
+              <div className="px-2 pt-1 text-sm font-semibold text-slate-500">
+                {z.label}{" "}
+                <span className="text-xs font-normal text-slate-400">
+                  {z.sub} · {z.count}명
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {/* 수술실 박스 (집도 SURG만 점등) */}
           {rooms.map((room) => {
+            const occ = layout.roomOcc.get(room);
+            const busy = !!occ;
             const rect = roomRect(room);
-            const task = activeByRoom.get(room);
-            const busy = !!task;
-            const dc = busy ? deptColor(task!.dept) : "#cbd5e1";
-            const deptKo = busy ? (DEPT_META[task!.dept]?.ko ?? "수술중") : "대기";
-            const progress = task ? (t - task.start) / Math.max(1, task.end - task.start) : 0;
+            const dc = busy ? deptColor(occ!.dept) : "#cbd5e1";
+            const prog = busy ? clamp((t - occ!.stage.start) / Math.max(1, occ!.stage.end - occ!.stage.start), 0, 1) : 0;
             return (
               <div
                 key={room}
-                className="absolute rounded-xl border-2 transition-colors duration-300"
+                className="absolute rounded-lg border-2 transition-colors duration-300"
                 style={{
                   left: rect.x,
                   top: rect.y,
                   width: rect.w,
                   height: rect.h,
-                  background: busy ? "#ffffff" : "#f1f5f9",
+                  background: busy ? "#ffffff" : "#f8fafc",
                   borderColor: dc,
-                  boxShadow: busy ? `0 0 0 4px ${dc}2e` : "none",
+                  boxShadow: busy ? `0 0 0 3px ${dc}2e` : "none",
+                  zIndex: 1,
                 }}
               >
-                <div className="flex items-center justify-between px-3 pt-2">
-                  <span className="text-base font-bold text-slate-700">🏥 {room}</span>
-                  <span
-                    className="text-sm px-2 py-0.5 rounded font-semibold"
-                    style={{
-                      background: busy ? `${dc}1f` : "#e2e8f0",
-                      color: busy ? dc : "#64748b",
-                    }}
-                  >
-                    {deptKo}
-                  </span>
+                <div className="flex items-center justify-between px-2 pt-1">
+                  <span className="text-xs font-bold text-slate-600">🏥 {room}</span>
+                  {busy && (
+                    <span
+                      className="text-[11px] px-1.5 py-0.5 rounded font-semibold"
+                      style={{ background: `${dc}1f`, color: dc }}
+                    >
+                      {DEPT_META[occ!.dept]?.ko ?? ""}
+                    </span>
+                  )}
                 </div>
-                {task && (
-                  <div className="px-3 mt-1">
-                    <div className="text-sm text-slate-600 truncate">
-                      {task.label ? task.label : task.task_id} · 👤 {task.staff}명
-                    </div>
-                    <div className="mt-1.5 h-2.5 bg-slate-200 rounded overflow-hidden">
-                      <div
-                        className="h-full transition-[width] duration-150"
-                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%`, background: dc }}
-                      />
+                {busy && (
+                  <div className="px-2 mt-0.5">
+                    <div className="text-[11px] text-slate-500 truncate">{occ!.name}</div>
+                    <div className="mt-1 h-1.5 bg-slate-200 rounded overflow-hidden">
+                      <div className="h-full transition-[width] duration-150" style={{ width: `${prog * 100}%`, background: dc }} />
                     </div>
                   </div>
                 )}
@@ -458,41 +457,25 @@ export default function FloorPlan2D({ instance, result }: Props) {
             );
           })}
 
-          {/* 대기실(pool) */}
-          <div
-            className="absolute text-base font-semibold text-slate-500"
-            style={{ left: PAD, top: poolLabelY }}
-          >
-            🛋️ 간호인력 대기실
-          </div>
-          <div
-            className="absolute rounded-xl border border-dashed border-slate-300 bg-white/40"
-            style={{ left: PAD - 8, top: poolY, width: boardW - (PAD - 8) * 2, height: poolH }}
-          />
-
-          {/* 스태프 점 */}
-          {Array.from({ length: staffCap }).map((_, i) => {
-            const p = positions[i] ?? { left: PAD, top: poolY + 30 };
-            const roomId = placeRef.current[i];
-            const inRoom = roomId !== "pool";
-            const sdept = inRoom ? activeByRoom.get(roomId)?.dept : undefined;
-            const sc = sdept ? deptColor(sdept) : "#94a3b8";
-            const sko = sdept ? DEPT_META[sdept]?.ko ?? "" : "";
+          {/* 환자 점 (전공과 색 · 진한=처치 중, 옅은=대기/이동) */}
+          {layout.dots.map((d) => {
+            const c = deptColor(d.dept);
             return (
               <div
-                key={i}
-                title={inRoom ? `간호인력 #${i + 1} · ${sko} 수술실` : `간호인력 #${i + 1} · 대기실`}
-                className="absolute flex items-center justify-center rounded-full font-bold text-white"
+                key={d.pid}
+                title={`${d.pid} · ${DEPT_META[d.dept]?.ko ?? ""} · ${ZONE_KO[d.zone] ?? d.zone}${d.active ? "" : " (대기)"}`}
+                className="absolute flex items-center justify-center rounded-full text-white"
                 style={{
                   width: dot,
                   height: dot,
-                  fontSize: Math.round(dot * 0.5),
-                  left: p.left,
-                  top: p.top,
-                  background: sc,
-                  boxShadow: inRoom ? `0 0 0 3px ${sc}40` : "none",
-                  transition: "left 0.6s ease, top 0.6s ease, background 0.3s",
-                  zIndex: 5,
+                  fontSize: Math.round(dot * 0.46),
+                  left: d.left,
+                  top: d.top,
+                  background: c,
+                  opacity: d.active ? 1 : 0.5,
+                  boxShadow: d.active ? `0 0 0 3px ${c}33` : "none",
+                  transition: "left 0.6s ease, top 0.6s ease, opacity 0.3s, background 0.3s",
+                  zIndex: 6,
                 }}
               >
                 👤
@@ -544,9 +527,9 @@ export default function FloorPlan2D({ instance, result }: Props) {
       )}
 
       <p className="text-sm text-gray-500">
-        💡 수술실 외곽선·의료진(간호인력) 점 색은 <b>그 수술의 전공과</b>를 나타냅니다(응급=빨강).
-        아래 <b>과별 집도의(전공의)</b> 패널은 과별 정원과 지금 집도 중인 인원을 색으로 보여줍니다.
-        간호인력은 과 구분이 없는 공용 풀이라 대기 중엔 회색입니다.
+        💡 환자가 <b>준비구역 → 수술실(집도) → 회복실 → 퇴실</b> 순서로 흐릅니다(색 = 전공과, 응급=빨강).
+        수술실은 실제 집도(SURG) 중에만 점등되고, 환자는 단계 사이엔 다음 구역에서 옅게 대기합니다.
+        아래 <b>과별 집도의(전공의)</b> 패널은 과별 정원과 지금 집도 중인 인원을 보여줍니다.
         알고리즘을 바꿔가며 같은 인스턴스에서 동선·점유가 어떻게 달라지는지 비교해 보세요.
       </p>
     </section>
