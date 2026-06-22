@@ -462,6 +462,80 @@ def solve_dynamic_emergency(n_patients: int, seed: int, name: str, *,
     return best_sched, j2
 
 
+def _electives_only(ji: Jnuh5Instance) -> Jnuh5Instance:
+    """응급을 제외한 예정 환자만의 하위 인스턴스(같은 자원·5단계)."""
+    elec_pat = {pid: p for pid, p in ji.patients.items() if not p.is_emergency}
+    keep = set()
+    for p in elec_pat.values():
+        keep.update(p.task_ids.values())
+    elec_tasks = {t: task for t, task in ji.instance.tasks.items() if t in keep}
+    inst2 = Instance(instance_id=ji.instance.instance_id + "-elec", tasks=elec_tasks,
+                     resource_capacities=dict(ji.instance.resource_capacities),
+                     seed=ji.instance.seed, source="synthetic",
+                     turnover=getattr(ji.instance, "turnover", 0))
+    return Jnuh5Instance(instance=inst2, patients=elec_pat, scenario=ji.scenario,
+                         emergency_arrival=ji.emergency_arrival)
+
+
+def solve_dynamic(name: str, ji: Jnuh5Instance, *, weighted: bool,
+                  budget: float = 15.0, seed: int = 42) -> Schedule:
+    """동적 재스케줄(캐시된 인스턴스용): 응급(is_emergency)이 각자 도착시각에 예고없이 도착.
+    ① 예정만 계획 → ② 가장 이른 응급 도착(t_now) 이전 시작된 작업 고정(freeze)
+    → ③ 응급 주입 → ④ 미시작 작업+응급 재최적화. 응급 없으면 정적과 동일."""
+    inst = ji.instance
+    emerg = [p for p in ji.patients.values() if p.is_emergency]
+    if not emerg:
+        return run_algorithm(name, ji, weighted=weighted, budget=budget, seed=seed)
+    t_start = time.perf_counter()
+    t_now = min(p.arrival for p in emerg)
+
+    # Phase 1: 예정 환자만 계획
+    ji_elec = _electives_only(ji)
+    s0 = run_algorithm(name, ji_elec, weighted=weighted, budget=budget * 0.5, seed=seed)
+
+    # Phase 2: t_now 이전 시작분 고정 + 미시작·응급 재최적화
+    orig_release = {t: task.release_time for t, task in inst.tasks.items()}
+    frozen = {t: s0.assignments[t].start for t in s0.assignments
+              if s0.assignments[t].start < t_now}
+    for t, task in inst.tasks.items():
+        if t in frozen:
+            task.release_time = frozen[t]                 # 진행분: 시작 시각 고정
+        elif not ji.patients[task.patient_id].is_emergency:
+            task.release_time = max(task.release_time, t_now)   # 미시작 예정: t_now 이후
+        # 응급은 자신의 도착시각 release 유지
+    frozen_order = sorted(frozen, key=lambda t: frozen[t])
+    free = [t for t in inst.tasks if t not in frozen]
+    free_set = set(free)
+
+    def obj(free_order):
+        sched = decode(inst, frozen_order + free_order)
+        return objective_value(ji, sched, weighted=weighted), sched
+
+    h = heuristic_orders(ji)
+    best_h = min(((_eval(ji, list(o), weighted)[0], list(o)) for o in h.values()),
+                 key=lambda x: x[0])[1]
+    best_free = [t for t in best_h if t in free_set]
+    best_obj, best_sched = obj(best_free)
+
+    rng = random.Random(seed + 7)
+    t0 = time.perf_counter()
+    cur, cur_obj = best_free, best_obj
+    while time.perf_counter() - t0 < budget * 0.5:
+        cand = _neighbor(cur, rng)
+        o, sched = obj(cand)
+        if o <= cur_obj:
+            cur, cur_obj = cand, o
+        if o < best_obj:
+            best_obj, best_sched = o, sched
+
+    for t, task in inst.tasks.items():           # 원래 release 복원(지표는 도착 기준)
+        task.release_time = orig_release[t]
+    best_sched.algo = f"{name}-dynamic"
+    best_sched.wall_clock_sec = time.perf_counter() - t_start
+    best_sched.validate(inst)
+    return best_sched
+
+
 def run_algorithm(name: str, ji: Jnuh5Instance, *, weighted: bool,
                   budget: float = 15.0, seed: int = 42) -> Schedule:
     """Dispatch by algorithm name."""

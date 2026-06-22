@@ -19,7 +19,7 @@ interface FormState {
   seed: number;
   n_rooms: number;          // FOIA 실측 12 고정
   weighted: boolean;        // KTAS 가중 목적 on/off
-  include_emergency: boolean;
+  n_emergency: number;        // 0=정적 스케줄링, 1↑=동적 재스케줄
   time_limit_sec: number;
 }
 
@@ -28,7 +28,7 @@ const DEFAULT_FORM: FormState = {
   seed: 42,
   n_rooms: 12,
   weighted: false,
-  include_emergency: false,
+  n_emergency: 0,
   time_limit_sec: 5,
 };
 
@@ -93,7 +93,7 @@ export default function Home() {
         n_staff: FIXED.n_staff,
         n_anesthesia: FIXED.n_anesthesia,
         n_pacu: FIXED.n_pacu,
-        include_emergency: form.include_emergency,
+        n_emergency: form.n_emergency,
         turnover: FIXED.turnover,
       });
       setInstance(inst);
@@ -154,7 +154,7 @@ export default function Home() {
             <NumberField label="시드 (재현용)" min={0} max={9999} step={1} value={form.seed} onChange={(v) => updateForm("seed", v)} />
             <NumberField label="시간예산 (초/알고)" min={1} max={60} step={1} value={form.time_limit_sec} onChange={(v) => updateForm("time_limit_sec", v)} />
             <ToggleField label="목적함수" value={form.weighted} onText="KTAS 가중" offText="무가중 Σwait" onChange={(v) => updateForm("weighted", v)} />
-            <ToggleField label="응급 삽입" value={form.include_emergency} onText="포함 (t=120)" offText="없음" onChange={(v) => updateForm("include_emergency", v)} />
+            <NumberField label="응급 수 (0=정적·1↑=동적)" min={0} max={10} step={1} value={form.n_emergency} onChange={(v) => updateForm("n_emergency", v)} />
           </div>
           <p className="text-xs text-gray-400 mt-3">
             자원(제주대병원 정보공개 실측·2025): 수술실 12 · 마취 전문의 9 · 간호 주간 동시 ≈24(12실×2명; FOIA 43명 3교대·주간집중, 유사병원 유추) · 회복베드 18(추정) · 전환 20분.

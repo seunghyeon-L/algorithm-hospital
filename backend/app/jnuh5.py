@@ -112,14 +112,21 @@ def generate_jnuh5_instance(
     n_anesthesia: int = 9,    # FOIA 표3 마취통증의학과 전문의 9 (병목)
     n_pacu: int = 18,         # 미제공(추정 유지, PACU:OR≈1.5)
     turnover: int = 20,
-    include_emergency: bool = False,
-    emergency_arrival: int = 120,
+    n_emergency: int = 0,                            # 응급 환자 수 (0=정적, >0=동적 재스케줄 대상)
+    emergency_window: Tuple[int, int] = (60, 420),   # 응급 도착시각 범위(분) — 시드 의존 추첨
+    include_emergency: bool = False,                 # (하위호환) True → n_emergency≥1
+    emergency_arrival: Optional[int] = None,         # (하위호환) 지정 시 모든 응급 도착 고정
     arrival_window: Tuple[int, int] = (0, 90),
     arrival_step: int = 5,
 ) -> Jnuh5Instance:
-    """Generate a 5-stage JNUH instance with `n_patients` electives (+1 emergency)."""
+    """5단계 JNUH 인스턴스: 예정 `n_patients`명 + 응급 `n_emergency`명.
+    응급 도착시각은 시드 의존(emergency_window 내). emergency_arrival 지정 시 고정(하위호환)."""
+    if include_emergency and n_emergency == 0:
+        n_emergency = 1
     if not (1 <= n_patients <= 5000):
         raise ValueError(f"n_patients={n_patients} out of range [1, 5000]")
+    if not (0 <= n_emergency <= 50):
+        raise ValueError(f"n_emergency={n_emergency} out of range [0, 50]")
     rng = random.Random(seed)
 
     depts = [d for d, _ in _JNUH_CASE_MIX]
@@ -142,7 +149,11 @@ def generate_jnuh5_instance(
             dept = "surg_gs"  # emergency general-surgery add-on
             label, mean, sd, surg_staff = "응급수술", 120, 50, 3
             ktas = 1
-            arrival = emergency_arrival
+            if emergency_arrival is not None:
+                arrival = emergency_arrival          # 하위호환: 고정 도착
+            else:
+                lo_e, hi_e = emergency_window
+                arrival = rng.randrange(lo_e // 30, hi_e // 30 + 1) * 30   # 시드 의존 추첨
         else:
             dept = rng.choices(depts, weights=weights, k=1)[0]
             label, mean, sd, surg_staff, ktas = rng.choice(JNUH5_SURGERY_TYPES[dept])
@@ -201,8 +212,8 @@ def generate_jnuh5_instance(
 
     for p in range(n_patients):
         add_patient(p, emergency=False)
-    if include_emergency:
-        add_patient(n_patients, emergency=True)
+    for e in range(n_emergency):
+        add_patient(n_patients + e, emergency=True)
 
     inst = Instance(
         instance_id=f"jnuh5-{scenario}-n{n_patients}-seed{seed}",
@@ -213,8 +224,9 @@ def generate_jnuh5_instance(
         turnover=turnover,
     )
     inst.validate()
-    return Jnuh5Instance(instance=inst, patients=patients,
-                         scenario=scenario, emergency_arrival=emergency_arrival)
+    emerg_arrivals = [p.arrival for p in patients.values() if p.is_emergency]
+    return Jnuh5Instance(instance=inst, patients=patients, scenario=scenario,
+                         emergency_arrival=(min(emerg_arrivals) if emerg_arrivals else 0))
 
 
 # ---------------------------------------------------------------------------

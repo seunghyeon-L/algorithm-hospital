@@ -16,7 +16,7 @@ export interface GenerateInstanceRequest {
   n_staff: number;
   n_anesthesia: number;
   n_pacu: number;
-  include_emergency: boolean;
+  n_emergency: number;
   turnover?: number;
 }
 

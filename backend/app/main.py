@@ -31,7 +31,7 @@ from .jnuh5 import (
     objective_value,
     patient_metrics,
 )
-from .jnuh5_algos import run_algorithm
+from .jnuh5_algos import run_algorithm, solve_dynamic
 
 DEFAULT_TIME_LIMIT_SEC = 8.0
 DEFAULT_RANDOM_SEED = 42
@@ -104,7 +104,7 @@ class GenerateInstanceRequest(BaseModel):
     n_staff: int = Field(default=24, ge=1, le=80, description="간호 주간 동시가용 ≈24 (12실×2명 소독+순환; FOIA 43명 3교대·주간집중)")
     n_anesthesia: int = Field(default=9, ge=1, le=40, description="마취 전문의 9 (FOIA 표3 2025, 병목)")
     n_pacu: int = Field(default=18, ge=1, le=80, description="회복실 베드(PACU, 미제공·추정)")
-    include_emergency: bool = Field(default=False, description="응급 1명 삽입(도착 t=120분)")
+    n_emergency: int = Field(default=0, ge=0, le=10, description="응급 환자 수 (0=정적 스케줄링, 1↑=동적 재스케줄; 도착시각 시드 의존)")
     turnover: int = Field(default=20, ge=0, le=120, description="수술실 전환시간(분)")
 
 
@@ -325,7 +325,7 @@ def create_instance(req: GenerateInstanceRequest):
         n_anesthesia=req.n_anesthesia,
         n_pacu=req.n_pacu,
         turnover=req.turnover,
-        include_emergency=req.include_emergency,
+        n_emergency=req.n_emergency,
     )
     _jnuh5_cache[ji.instance.instance_id] = ji
     _instance_cache[ji.instance.instance_id] = ji.instance
@@ -358,9 +358,10 @@ def run_schedule(algo: str, req: ScheduleRequest):
         )
 
     ji = _get_jnuh5_or_raise(req.instance_id)
+    solver = solve_dynamic if any(p.is_emergency for p in ji.patients.values()) else run_algorithm
 
     try:
-        sched = run_algorithm(
+        sched = solver(
             algo, ji, weighted=req.weighted,
             budget=req.time_limit_sec, seed=req.random_seed,
         )
@@ -394,9 +395,12 @@ def compare_algorithms(req: CompareRequest):
     # --- run our 5 algorithms under one shared budget + chosen objective ---
     errors: List[str] = []
     schedules: Dict[str, Any] = {}
+    # 응급이 있으면 동적 재스케줄(예고없이 도착→진행분 freeze→재최적화), 없으면 정적
+    dynamic = any(p.is_emergency for p in ji.patients.values())
+    solver = solve_dynamic if dynamic else run_algorithm
     for name in COMPARE_ALGOS:
         try:
-            schedules[name] = run_algorithm(
+            schedules[name] = solver(
                 name, ji, weighted=req.weighted,
                 budget=req.time_limit_sec, seed=req.random_seed,
             )
@@ -424,6 +428,7 @@ def compare_algorithms(req: CompareRequest):
     summary: Dict[str, Any] = {
         "critical_path_length": cp_length,
         "objective": "weighted" if req.weighted else "unweighted",
+        "mode": "dynamic" if dynamic else "static",
         "errors": errors,
     }
     for name, res in results.items():
