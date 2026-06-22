@@ -54,7 +54,7 @@ class TestJnuhCapacities:
         assert caps["room"] == 12
         assert caps["anesthesia"] == 8
         assert caps["surg_gs"] == 11
-        assert caps["surg_cs"] == 1
+        assert caps["surg_cs"] == 2     # FOIA 2025 흉부외과 2명
         assert caps["surg_ps"] == 1
 
     def test_crisis_room_reduction(self):

@@ -161,31 +161,31 @@ def generate_instance(
 # capacities sum to 12), which enforces departmental block limits without
 # touching any algorithm code.
 
+# 진료과별 전문의 수 — 제주대병원 정보공개청구 답변서 표3 (2025.12.31 기준, 실측).
 _JNUH_SURGEONS: Dict[str, int] = {
-    "surg_gs": 11,   # 외과 (general surgery)
-    "surg_os": 8,    # 정형외과 (orthopedics)
+    "surg_gs": 11,   # 외과
+    "surg_os": 7,    # 정형외과 (FOIA 2025)
     "surg_obgy": 6,  # 산부인과
     "surg_oph": 6,   # 안과
     "surg_ns": 5,    # 신경외과
-    "surg_ent": 5,   # 이비인후과
+    "surg_ent": 6,   # 이비인후과 (FOIA 2025)
     "surg_uro": 4,   # 비뇨의학과
-    "surg_cs": 1,    # 흉부외과 — scarce: hard local bottleneck
-    "surg_ps": 1,    # 성형외과 — scarce: hard local bottleneck
+    "surg_cs": 2,    # 흉부외과 (FOIA 2025, 전 연도 2명)
+    "surg_ps": 1,    # 성형외과
 }
 
-# Realistic case-mix weights (NOT proportional to surgeon counts; cap=1
-# departments get only a trickle so they act as local bottlenecks without
-# trivialising the instance).
+# 진료과별 수술 비율 — 정보공개청구 답변서 표5(2025 연간 수술건수, 합 9666)의 실측 비율.
+# 정형(33%)·안과(19%)가 압도적, 흉부·성형은 소수.
 _JNUH_CASE_MIX: List[Tuple[str, float]] = [
-    ("surg_gs", 0.24),
-    ("surg_os", 0.20),
-    ("surg_obgy", 0.12),
-    ("surg_oph", 0.12),
-    ("surg_ent", 0.10),
-    ("surg_ns", 0.10),
-    ("surg_uro", 0.08),
-    ("surg_cs", 0.02),
-    ("surg_ps", 0.02),
+    ("surg_os", 0.328),    # 정형외과 3172
+    ("surg_oph", 0.190),   # 안과 1840
+    ("surg_gs", 0.171),    # 외과 1654
+    ("surg_obgy", 0.114),  # 산부인과 1105
+    ("surg_ent", 0.096),   # 이비인후과 931
+    ("surg_uro", 0.053),   # 비뇨의학과 516
+    ("surg_ns", 0.024),    # 신경외과 235
+    ("surg_ps", 0.013),    # 성형외과 122
+    ("surg_cs", 0.009),    # 흉부외과 91
 ]
 
 # Per-department surgery types: (label, mean_min, sd_min, staff_demand, priority_weight)
