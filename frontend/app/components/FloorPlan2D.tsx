@@ -145,6 +145,19 @@ export default function FloorPlan2D({ instance, result }: Props) {
     return { busy, roomMap };
   }, [surgAssign, t]);
 
+  // 공용 자원(마취 전문의·간호사) 실시간 사용량 — 모든 단계 합산(과 구분 없는 공용 풀)
+  const poolUse = useMemo(() => {
+    let anes = 0, nurse = 0;
+    if (schedule) for (const a of Object.values(schedule.assignments)) {
+      if (a.start <= t && t < a.end) {
+        const res = instance.tasks[a.task_id]?.resources ?? {};
+        anes += res.anesthesia ?? 0;
+        nurse += res.staff ?? 0;
+      }
+    }
+    return { anes, nurse };
+  }, [schedule, instance, t]);
+
   // ---- 레이아웃: 위=수술실 그리드, 아래=과별 집도의 벤치 ----
   const perRoomRow = boardW < 760 ? 3 : boardW < 1120 ? 4 : 6;
   const nRoomRows = Math.max(1, Math.ceil(rooms.length / perRoomRow));
@@ -243,6 +256,8 @@ export default function FloorPlan2D({ instance, result }: Props) {
   const fmt = (x: number) => Math.round(x);
   const totalSurgeons = benchDepts.reduce((s, d) => s + (surgeonCaps[d] ?? 0), 0);
   const busyCount = busy.size;
+  const anesCap = instance.resource_capacities.anesthesia ?? 0;
+  const nurseCap = instance.resource_capacities.staff ?? 0;
 
   return (
     <section className="space-y-5">
@@ -436,12 +451,47 @@ export default function FloorPlan2D({ instance, result }: Props) {
         </div>
       </div>
 
+      {/* 공용 자원 (마취 전문의·간호사) 실시간 사용량 게이지 */}
+      <div className="bg-white border rounded-xl px-4 py-3 space-y-2.5">
+        <div className="text-base font-semibold text-slate-700">
+          🔧 공용 자원 — 실시간 사용량
+          <span className="text-xs font-normal text-slate-400 ml-2">
+            과 구분 없는 공용 풀 · 진한 점 = 사용 중 · 포화 시 빨강
+          </span>
+        </div>
+        <ResourceGauge label="마취 전문의" used={poolUse.anes} cap={anesCap} color="#475569" />
+        <ResourceGauge label="간호사" used={poolUse.nurse} cap={nurseCap} color="#64748b" />
+      </div>
+
       <p className="text-sm text-gray-500">
-        💡 점은 <b>집도의(전공의)</b>입니다(색 = 전공과). 수술이 시작되면 해당 과의 빈 집도의 1명이
-        <b> 벤치에서 수술실로 이동</b>(채워진 점)하고, 끝나면 자기 자리로 돌아옵니다.
-        과별 정원은 한정돼 있어, 같은 과 수술이 몰리면 그 과 벤치가 비고 — 한정된 집도의를 동시
-        수술들에 어떻게 <b>배분</b>하는지(자원 분배)를 알고리즘별로 비교해 보세요.
+        💡 색 점은 <b>집도의(전공의)</b>입니다(색 = 전공과) — 수술이 시작되면 해당 과의 빈 집도의 1명이
+        <b> 벤치에서 수술실로 이동</b>하고 끝나면 복귀합니다. 아래 <b>공용 자원</b> 게이지는
+        <b> 마취 전문의({anesCap})·간호사({nurseCap})</b>의 실시간 사용량입니다(과 구분 없는 공용 풀).
+        수술실·집도의가 남아도 <b>마취 전문의가 포화(예: {anesCap}/{anesCap})</b>면 수술을 못 시작하는
+        병목을 볼 수 있어요. 알고리즘을 바꿔가며 자원 배분이 어떻게 달라지는지 비교해 보세요.
       </p>
     </section>
+  );
+}
+
+// 공용 자원 사용량 게이지 — cap개 점 중 used개를 채움(포화 시 빨강 표시)
+function ResourceGauge({ label, used, cap, color }: { label: string; used: number; cap: number; color: string }) {
+  const full = cap > 0 && used >= cap;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-medium text-slate-600 w-[84px] shrink-0">{label}</span>
+      <span className="flex flex-wrap gap-1 flex-1">
+        {Array.from({ length: cap }).map((_, i) => (
+          <span
+            key={i}
+            className="inline-block w-3.5 h-3.5 rounded-full"
+            style={{ background: i < used ? color : "transparent", border: `1.5px solid ${color}`, opacity: i < used ? 1 : 0.35 }}
+          />
+        ))}
+      </span>
+      <span className={`text-xs font-mono shrink-0 ${full ? "text-red-600 font-bold" : "text-slate-500"}`}>
+        {used}/{cap}{full ? " 포화" : ""}
+      </span>
+    </div>
   );
 }
