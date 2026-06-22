@@ -130,6 +130,12 @@ export default function FloorPlan2D({ instance, result }: Props) {
     return () => ro.disconnect();
   }, []);
 
+  // 구역별 환자 슬롯(고정) — 재생 중 점이 좌우로 흔들리지 않도록, 환자가 한 구역에
+  // 머무는 동안 같은 슬롯을 유지하고 떠나면 반납해 다음 환자가 재사용한다.
+  const slotRef = useRef<{ prep: Map<string, number>; pacu: Map<string, number>; discharge: Map<string, number> }>({
+    prep: new Map(), pacu: new Map(), discharge: new Map(),
+  });
+
   const schedule = result.results[algo]?.schedule;
   const makespan = schedule?.makespan ?? 0;
 
@@ -228,6 +234,7 @@ export default function FloorPlan2D({ instance, result }: Props) {
   useEffect(() => {
     setT(0);
     setPlaying(false);
+    slotRef.current = { prep: new Map(), pacu: new Map(), discharge: new Map() };
   }, [algo]);
 
   // 재생 루프
@@ -259,12 +266,15 @@ export default function FloorPlan2D({ instance, result }: Props) {
     };
   }, [playing, speed, makespan]);
 
-  // 시각 t의 환자 위치·수술실 점유 계산
+  // 시각 t의 환자 위치·수술실 점유 계산 (구역별 고정 슬롯으로 재생 중 흔들림 방지)
   const layout = useMemo(() => {
     const stripPerRow = Math.max(1, Math.floor((boardW - 2 * PAD) / (dot + 8)));
-    const slots: Record<string, number> = { prep: 0, pacu: 0, discharge: 0 };
     const dots: { pid: string; dept: string; left: number; top: number; zone: Zone; active: boolean }[] = [];
     const roomOcc = new Map<string, { pid: string; dept: string; name: string; stage: PStage }>();
+    const inZone: Record<"prep" | "pacu" | "discharge", { pid: string; dept: string; active: boolean }[]> = {
+      prep: [], pacu: [], discharge: [],
+    };
+    // 1) 각 환자의 구역 판정 (수술실은 방 위치가 이미 고정이라 바로 배치)
     for (const pv of patients) {
       const loc = locOf(pv, t);
       if (loc.zone === "arrival" || loc.zone === "done") continue;
@@ -274,16 +284,31 @@ export default function FloorPlan2D({ instance, result }: Props) {
         dots.push({ pid: pv.pid, dept: pv.dept, zone: "or", active: true,
           left: rect.x + rect.w / 2 - dot / 2, top: rect.y + rect.h - dot - 6 });
       } else {
-        const z = loc.zone as "prep" | "pacu" | "discharge";
-        const slot = slots[z]++;
-        const col = slot % stripPerRow;
-        const row = Math.floor(slot / stripPerRow);
-        const baseY = z === "prep" ? yPrepContent : z === "pacu" ? yPacuContent : yDischContent;
-        dots.push({ pid: pv.pid, dept: pv.dept, zone: z, active: loc.active,
-          left: PAD + col * (dot + 8), top: baseY + row * dotRowH });
+        inZone[loc.zone as "prep" | "pacu" | "discharge"].push({ pid: pv.pid, dept: pv.dept, active: loc.active });
       }
     }
-    return { dots, roomOcc, counts: { prep: slots.prep, pacu: slots.pacu, discharge: slots.discharge, or: roomOcc.size } };
+    // 2) 구역별 고정 슬롯: 머무는 동안 슬롯 유지, 떠난 환자 슬롯 반납, 새 환자는 최소 빈 슬롯
+    const baseYof = { prep: yPrepContent, pacu: yPacuContent, discharge: yDischContent } as const;
+    (["prep", "pacu", "discharge"] as const).forEach((z) => {
+      const map = slotRef.current[z];
+      const present = new Set(inZone[z].map((p) => p.pid));
+      for (const pid of [...map.keys()]) if (!present.has(pid)) map.delete(pid);
+      const used = new Set(map.values());
+      inZone[z].filter((p) => !map.has(p.pid)).sort((a, b) => (a.pid < b.pid ? -1 : 1)).forEach((p) => {
+        let s = 0;
+        while (used.has(s)) s++;
+        used.add(s);
+        map.set(p.pid, s);
+      });
+      for (const p of inZone[z]) {
+        const slot = map.get(p.pid) ?? 0;
+        const col = slot % stripPerRow;
+        const row = Math.floor(slot / stripPerRow);
+        dots.push({ pid: p.pid, dept: p.dept, zone: z, active: p.active,
+          left: PAD + col * (dot + 8), top: baseYof[z] + row * dotRowH });
+      }
+    });
+    return { dots, roomOcc, counts: { prep: inZone.prep.length, pacu: inZone.pacu.length, discharge: inZone.discharge.length, or: roomOcc.size } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients, t, boardW, dot, roomW, roomH, perRoomRow, yPrepContent, yPacuContent, yDischContent, yOrContent]);
 
