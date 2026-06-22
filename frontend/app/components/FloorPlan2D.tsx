@@ -20,6 +20,45 @@ const ALGO_LABELS: Record<AlgoKey, string> = {
   "CP-SAT": "CP-SAT",
 };
 
+// 전공과별 색상 — 수술실 외곽선·의료진(간호인력) 점·범례에 사용.
+// 라벨("유리체절제술·PRECHECK")의 수술명(앞부분)으로 전공과를 판별한다.
+// (백엔드 jnuh5.JNUH5_SURGERY_TYPES의 9개 과 + 응급과 동기화)
+const DEPT_META: Record<string, { ko: string; color: string }> = {
+  surg_gs:   { ko: "외과",       color: "#2563eb" },
+  surg_os:   { ko: "정형외과",   color: "#16a34a" },
+  surg_ns:   { ko: "신경외과",   color: "#7c3aed" },
+  surg_obgy: { ko: "산부인과",   color: "#db2777" },
+  surg_oph:  { ko: "안과",       color: "#0891b2" },
+  surg_ent:  { ko: "이비인후과", color: "#d97706" },
+  surg_uro:  { ko: "비뇨의학과", color: "#0d9488" },
+  surg_cs:   { ko: "흉부외과",   color: "#4f46e5" },
+  surg_ps:   { ko: "성형외과",   color: "#c026d3" },
+  emergency: { ko: "응급",       color: "#dc2626" },
+};
+
+const SURGERY_DEPT: Record<string, string> = {
+  충수절제술: "surg_gs", 담낭절제술: "surg_gs", 탈장교정술: "surg_gs", 대장절제술: "surg_gs",
+  슬관절치환술: "surg_os", 고관절치환술: "surg_os", 골절정복술: "surg_os",
+  추간판절제술: "surg_ns", 개두술: "surg_ns",
+  제왕절개: "surg_obgy", 자궁절제술: "surg_obgy",
+  백내장수술: "surg_oph", 유리체절제술: "surg_oph",
+  편도절제술: "surg_ent", 부비동내시경수술: "surg_ent",
+  경요도절제술: "surg_uro", 요로결석제거술: "surg_uro",
+  폐엽절제술: "surg_cs",
+  피판재건술: "surg_ps",
+  응급수술: "emergency",
+};
+
+const DEFAULT_DEPT_COLOR = "#64748b";
+function deptOfLabel(label: string | null): string {
+  if (!label) return "";
+  const name = label.split("·")[0];
+  return SURGERY_DEPT[name] ?? "";
+}
+function deptColor(dept: string): string {
+  return DEPT_META[dept]?.color ?? DEFAULT_DEPT_COLOR;
+}
+
 interface ActiveTask {
   task_id: string;
   room: string;
@@ -27,6 +66,7 @@ interface ActiveTask {
   end: number;
   staff: number;
   label: string | null;
+  dept: string;
 }
 
 interface Props {
@@ -95,8 +135,16 @@ export default function FloorPlan2D({ instance, result }: Props) {
         end: a.end,
         staff: instance.tasks[a.task_id]?.resources?.staff ?? 0,
         label: instance.tasks[a.task_id]?.label ?? null,
+        dept: deptOfLabel(instance.tasks[a.task_id]?.label ?? null),
       }));
   }, [schedule, instance]);
+
+  // 현재 일정에 등장하는 전공과(범례용, DEPT_META 정의 순서)
+  const deptsPresent = useMemo(() => {
+    const set = new Set<string>();
+    for (const task of tasks) if (task.dept) set.add(task.dept);
+    return Object.keys(DEPT_META).filter((d) => set.has(d));
+  }, [tasks]);
 
   // ---- 반응형 치수 계산: 보드 폭을 채우도록 수술실 크기 산출 ----
   const perRow = Math.min(rooms.length, ROOMS_PER_ROW) || 1;
@@ -313,6 +361,20 @@ export default function FloorPlan2D({ instance, result }: Props) {
         </span>
       </div>
 
+      {/* 전공과 색상 범례 */}
+      {deptsPresent.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm bg-white border rounded-xl px-4 py-3">
+          <span className="font-semibold text-slate-600">전공과 색상:</span>
+          {deptsPresent.map((d) => (
+            <span key={d} className="inline-flex items-center gap-1.5">
+              <span className="inline-block w-3.5 h-3.5 rounded-sm" style={{ background: deptColor(d) }} />
+              <span className="text-slate-700">{DEPT_META[d].ko}</span>
+            </span>
+          ))}
+          <span className="text-slate-400 sm:ml-auto">수술실 외곽선 · 의료진 점 = 해당 수술의 전공과</span>
+        </div>
+      )}
+
       {/* 평면도 보드 (전체 폭) */}
       <div ref={wrapRef} className="w-full">
         <div
@@ -324,6 +386,8 @@ export default function FloorPlan2D({ instance, result }: Props) {
             const rect = roomRect(room);
             const task = activeByRoom.get(room);
             const busy = !!task;
+            const dc = busy ? deptColor(task!.dept) : "#cbd5e1";
+            const deptKo = busy ? (DEPT_META[task!.dept]?.ko ?? "수술중") : "대기";
             const progress = task ? (t - task.start) / Math.max(1, task.end - task.start) : 0;
             return (
               <div
@@ -335,20 +399,20 @@ export default function FloorPlan2D({ instance, result }: Props) {
                   width: rect.w,
                   height: rect.h,
                   background: busy ? "#ffffff" : "#f1f5f9",
-                  borderColor: busy ? "#2563eb" : "#cbd5e1",
-                  boxShadow: busy ? "0 0 0 4px rgba(37,99,235,0.15)" : "none",
+                  borderColor: dc,
+                  boxShadow: busy ? `0 0 0 4px ${dc}2e` : "none",
                 }}
               >
                 <div className="flex items-center justify-between px-3 pt-2">
                   <span className="text-base font-bold text-slate-700">🏥 {room}</span>
                   <span
-                    className="text-sm px-2 py-0.5 rounded font-medium"
+                    className="text-sm px-2 py-0.5 rounded font-semibold"
                     style={{
-                      background: busy ? "#dbeafe" : "#e2e8f0",
-                      color: busy ? "#1d4ed8" : "#64748b",
+                      background: busy ? `${dc}1f` : "#e2e8f0",
+                      color: busy ? dc : "#64748b",
                     }}
                   >
-                    {busy ? "수술중" : "대기"}
+                    {deptKo}
                   </span>
                 </div>
                 {task && (
@@ -358,8 +422,8 @@ export default function FloorPlan2D({ instance, result }: Props) {
                     </div>
                     <div className="mt-1.5 h-2.5 bg-slate-200 rounded overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 transition-[width] duration-150"
-                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+                        className="h-full transition-[width] duration-150"
+                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%`, background: dc }}
                       />
                     </div>
                   </div>
@@ -383,11 +447,15 @@ export default function FloorPlan2D({ instance, result }: Props) {
           {/* 스태프 점 */}
           {Array.from({ length: staffCap }).map((_, i) => {
             const p = positions[i] ?? { left: PAD, top: poolY + 30 };
-            const inRoom = placeRef.current[i] !== "pool";
+            const roomId = placeRef.current[i];
+            const inRoom = roomId !== "pool";
+            const sdept = inRoom ? activeByRoom.get(roomId)?.dept : undefined;
+            const sc = sdept ? deptColor(sdept) : "#94a3b8";
+            const sko = sdept ? DEPT_META[sdept]?.ko ?? "" : "";
             return (
               <div
                 key={i}
-                title={`의료진 #${i + 1}`}
+                title={inRoom ? `간호인력 #${i + 1} · ${sko} 수술실` : `간호인력 #${i + 1} · 대기실`}
                 className="absolute flex items-center justify-center rounded-full font-bold text-white"
                 style={{
                   width: dot,
@@ -395,8 +463,8 @@ export default function FloorPlan2D({ instance, result }: Props) {
                   fontSize: Math.round(dot * 0.5),
                   left: p.left,
                   top: p.top,
-                  background: inRoom ? "#16a34a" : "#94a3b8",
-                  boxShadow: inRoom ? "0 0 0 3px rgba(22,163,74,0.25)" : "none",
+                  background: sc,
+                  boxShadow: inRoom ? `0 0 0 3px ${sc}40` : "none",
                   transition: "left 0.6s ease, top 0.6s ease, background 0.3s",
                   zIndex: 5,
                 }}
@@ -409,7 +477,8 @@ export default function FloorPlan2D({ instance, result }: Props) {
       </div>
 
       <p className="text-sm text-gray-500">
-        💡 초록색 의료진이 대기실에서 수술실로 이동해 작업하고, 끝나면 다음 수술실로 옮겨갑니다.
+        💡 수술실 외곽선과 의료진(간호인력) 점 색은 <b>그 수술의 전공과</b>를 나타냅니다(응급=빨강).
+        간호인력이 대기실에서 해당 전공과 수술실로 이동해 작업하고, 끝나면 다음 수술실로 옮겨갑니다.
         알고리즘을 바꿔가며 같은 인스턴스에서 동선·점유가 어떻게 달라지는지 비교해 보세요.
       </p>
     </section>
