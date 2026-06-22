@@ -206,9 +206,15 @@ class _ResourceTracker:
         return t
 
     def pick_room(self, start: int, end: int, room_names: List[str]) -> str:
+        # 실제 수술실을 점유하는(room 수요>0) 작업만 방을 차지한다고 본다.
+        # PRECHECK·PREP·REC·DISCHARGE의 방 라벨은 cosmetic이라 busy에서 제외한다.
+        # (과거엔 모든 단계 라벨이 busy를 채워 12실이 가득 차면 fallback room-1로
+        #  쏠려 동시 수술이 전부 같은 방에 배정되는 시각화 버그가 있었음.)
         occ_end = end + self._turnover
         busy = set()
         for iv in self._intervals:
+            if iv[3].get("room", 0) <= 0:
+                continue
             if not (iv[2] <= start or iv[0] >= occ_end):
                 busy.add(iv[4])
         for r in room_names:

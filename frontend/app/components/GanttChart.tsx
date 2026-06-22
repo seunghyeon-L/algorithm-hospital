@@ -21,16 +21,20 @@ interface Props {
 }
 
 export default function GanttChart({ schedule, title, accentColor }: Props) {
-  const assignments = Object.values(schedule.assignments);
+  // 수술실별 타임라인 — 실제 수술실을 점유하는 집도(SURG) 작업만 표시.
+  // (PRECHECK·PREP·REC·DISCHARGE는 수술실 밖 단계라 방 라벨이 cosmetic임)
+  const assignments = Object.values(schedule.assignments).filter((a) =>
+    a.task_id.endsWith("_SURG")
+  );
   if (assignments.length === 0) return null;
 
-  // Collect unique rooms in order of first appearance
+  // Collect unique rooms, sorted numerically (room-2 before room-10)
   const roomSet: string[] = [];
   for (const a of assignments) {
     const r = a.room ?? "room-1";
     if (!roomSet.includes(r)) roomSet.push(r);
   }
-  roomSet.sort();
+  roomSet.sort((a, b) => (Number(a.replace(/\D/g, "")) || 0) - (Number(b.replace(/\D/g, "")) || 0));
 
   const makespan = schedule.makespan;
   const rowH = 34;
