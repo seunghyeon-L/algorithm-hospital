@@ -100,7 +100,7 @@ def _get_jnuh5_or_raise(instance_id: str) -> Jnuh5Instance:
 class GenerateInstanceRequest(BaseModel):
     n_patients: int = Field(default=8, ge=1, le=40, description="환자 수 (각 5단계 작업)")
     seed: int = Field(default=42, description="재현용 RNG 시드")
-    n_rooms: int = Field(default=12, ge=1, le=20, description="수술실 수 (JNUH 평상 12 · 위기 8)")
+    n_rooms: int = Field(default=12, ge=1, le=20, description="수술실 수 (FOIA 실측 12, 2023~25 동일)")
     n_staff: int = Field(default=24, ge=1, le=80, description="간호 주간 동시가용 ≈24 (12실×2명 소독+순환; FOIA 43명 3교대·주간집중)")
     n_anesthesia: int = Field(default=9, ge=1, le=40, description="마취 전문의 9 (FOIA 표3 2025, 병목)")
     n_pacu: int = Field(default=18, ge=1, le=80, description="회복실 베드(PACU, 미제공·추정)")

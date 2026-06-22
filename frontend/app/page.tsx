@@ -17,7 +17,7 @@ import UtilizationChart from "./components/UtilizationChart";
 interface FormState {
   n_patients: number;
   seed: number;
-  n_rooms: number;          // 12 평상 / 8 위기
+  n_rooms: number;          // FOIA 실측 12 고정
   weighted: boolean;        // KTAS 가중 목적 on/off
   include_emergency: boolean;
   time_limit_sec: number;
@@ -149,12 +149,11 @@ export default function Home() {
         {/* 파라미터 폼 */}
         <section className="bg-white rounded-xl border shadow-sm p-5">
           <h2 className="text-lg font-semibold mb-4">파라미터</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
             <NumberField label="환자 수 (각 5단계)" min={5} max={40} step={1} value={form.n_patients} onChange={(v) => updateForm("n_patients", v)} />
             <NumberField label="시드 (재현용)" min={0} max={9999} step={1} value={form.seed} onChange={(v) => updateForm("seed", v)} />
             <NumberField label="시간예산 (초/알고)" min={1} max={60} step={1} value={form.time_limit_sec} onChange={(v) => updateForm("time_limit_sec", v)} />
             <ToggleField label="목적함수" value={form.weighted} onText="KTAS 가중" offText="무가중 Σwait" onChange={(v) => updateForm("weighted", v)} />
-            <ToggleField label="수술실 (JNUH)" value={form.n_rooms === 8} onText="위기 8실" offText="평상 12실" onChange={(v) => updateForm("n_rooms", v ? 8 : 12)} />
             <ToggleField label="응급 삽입" value={form.include_emergency} onText="포함 (t=120)" offText="없음" onChange={(v) => updateForm("include_emergency", v)} />
           </div>
           <p className="text-xs text-gray-400 mt-3">
