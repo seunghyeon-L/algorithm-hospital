@@ -11,7 +11,7 @@ PRECHECK (수술 전 확인) and PREP (마취 준비) run in PARALLEL, both feed
 This is the opponent's exact graph, so the comparison is apples-to-apples.
 
 Resources (ours + recovery bed):
-  room(12) · staff/nurse(24) · anesthesia(8) · pacu_bed(18) · per-dept surgeons.
+  room(12) · staff/nurse(24) · anesthesia(9, FOIA) · pacu_bed(18) · per-dept surgeons(48, FOIA).
 
 Stage durations (literature/Korean-grounded round values; see jnuh-arbitrary-values memory):
   PRECHECK tri(5,10,15)  PREP tri(10,20,40)  SURG literature-lognormal

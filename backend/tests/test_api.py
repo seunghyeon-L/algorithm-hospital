@@ -5,7 +5,7 @@ Coverage:
   - GET  /health
   - POST /instances  (jnuh5 5-stage: PRECHECK∥PREP→SURG→REC→DISCHARGE, room=12)
   - GET  /instances, /instances/{id}
-  - POST /schedule/{algo} for baseline · SA · GA-seeded · HGA · CP-SAT
+  - POST /schedule/{algo} for baseline · SA · GA · HGA · CP-SAT
   - POST /compare — 5-way comparison, both objectives (무가중 / KTAS 가중)
 """
 
@@ -25,7 +25,7 @@ client = TestClient(app)
 
 # 8 patients × 5 stages = 40 tasks; room fixed at JNUH 12.
 SMALL_PAYLOAD = {"n_patients": 8, "seed": 7, "n_rooms": 12}
-ALGOS = {"baseline", "SA", "GA-seeded", "HGA", "CP-SAT"}
+ALGOS = {"baseline", "SA", "GA", "HGA", "CP-SAT"}
 
 
 @pytest.fixture(autouse=True)
@@ -156,7 +156,7 @@ class TestCompare:
     def test_summary_keys(self, created_instance_id):
         summary = client.post("/compare", json=self._req(created_instance_id)).json()["summary"]
         assert "baseline_total_wait" in summary
-        assert "GA-seeded_total_wait" in summary
+        assert "GA_total_wait" in summary
         assert "CP-SAT_total_wait" in summary
         assert summary["objective"] == "unweighted"
 

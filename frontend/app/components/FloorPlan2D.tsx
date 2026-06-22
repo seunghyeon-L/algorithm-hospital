@@ -9,12 +9,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CompareResponse, InstanceOut } from "../lib/api";
 
-type AlgoKey = "baseline" | "SA" | "GA-seeded" | "HGA" | "CP-SAT";
+type AlgoKey = "baseline" | "SA" | "GA" | "HGA" | "CP-SAT";
 
 const ALGO_LABELS: Record<AlgoKey, string> = {
   baseline: "베이스라인",
   SA: "SA",
-  "GA-seeded": "GA-seeded",
+  "GA": "GA",
   HGA: "HGA",
   "CP-SAT": "CP-SAT",
 };
@@ -264,7 +264,7 @@ export default function FloorPlan2D({ instance, result }: Props) {
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-2xl font-bold">집도의(전공의) 자원배분 시뮬레이션</h2>
         <div className="flex gap-1.5">
-          {(["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as AlgoKey[]).map((a) => (
+          {(["baseline", "SA", "GA", "HGA", "CP-SAT"] as AlgoKey[]).map((a) => (
             <button
               key={a}
               onClick={() => setAlgo(a)}

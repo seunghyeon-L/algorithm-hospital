@@ -56,8 +56,8 @@ def main():
         print(f"   ~evals in {B:.0f}s:  python≈{B*1000/py_ms:.0f}   numba≈{B*1000/nb_ms:.0f}", flush=True)
         print(f"{'algo':14}{'Python %':>10}{'Numba %':>10}{'gap(pp)':>9}", flush=True)
         for name, pyfn, nbfn in [
-            ("GA-seeded", lambda j: ga_py(j, weighted=False, budget=B, seed=2500 + args.seed, seeded=True),
-             lambda j: ga_native(j, weighted=False, budget=B, seed=2500 + args.seed, seeded=True)),
+            ("GA", lambda j: ga_py(j, weighted=False, budget=B, seed=2500 + args.seed, seeded=False),
+             lambda j: ga_native(j, weighted=False, budget=B, seed=2500 + args.seed, seeded=False)),
             ("HGA", lambda j: hga_py(j, weighted=False, budget=B, seed=3000 + args.seed),
              lambda j: hga_native(j, weighted=False, budget=B, seed=3000 + args.seed)),
         ]:

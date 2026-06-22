@@ -308,7 +308,7 @@ def hga_native(ji: Jnuh5Instance, *, weighted: bool, budget: float = 15.0,
     t0 = time.perf_counter()
     arr = extract_arrays_5(ji)
     g = ga_native(ji, weighted=weighted, budget=budget * 0.7, seed=seed,
-                  seeded=True, algo="HGA")
+                  seeded=False, algo="HGA")
     idx = arr["idx"]
     cur = [idx[t] for t in sorted(g.assignments, key=lambda t: g.assignments[t].start)]
     cur_obj = decode_obj(arr, np.array(cur, np.int64), weighted)

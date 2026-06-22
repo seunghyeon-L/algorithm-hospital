@@ -2,7 +2,7 @@
 """run_jnuh5_budget.py — time-budget × N sweep (native engine).
 
 Shows how the result (and the CP-SAT wall / crossover point) moves as the time
-limit changes, for SA / GA-seeded / HGA / CP-SAT, at a few N.
+limit changes, for SA / GA / HGA / CP-SAT, at a few N.
 
 CLI:  --n 200,500,1000   --budgets 2,5,10,20,40,60   --seed 42   --weighted 0
 """
@@ -29,7 +29,7 @@ def main():
 
     algos = [
         ("SA", lambda j, b: sa_native(j, weighted=weighted, budget=b, seed=1000 + args.seed)),
-        ("GA-seeded", lambda j, b: ga_native(j, weighted=weighted, budget=b, seed=2500 + args.seed, seeded=True)),
+        ("GA", lambda j, b: ga_native(j, weighted=weighted, budget=b, seed=2500 + args.seed, seeded=False)),
         ("HGA", lambda j, b: hga_native(j, weighted=weighted, budget=b, seed=3000 + args.seed)),
         ("CP-SAT", lambda j, b: cpsat(j, weighted=weighted, time_limit=b, warm_order=list(j.instance.tasks.keys()))),
     ]

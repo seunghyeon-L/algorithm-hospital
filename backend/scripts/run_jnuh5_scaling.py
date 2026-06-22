@@ -4,7 +4,7 @@
 Shows where metaheuristics (native SA/GA/HGA) overtake CP-SAT as N grows — the
 core 'our value-add' that the opponent (pure-Python, N=8-10) never reached.
 
-Algorithms: baseline, SA(native), GA-seeded(native), HGA(native), CP-SAT.
+Algorithms: baseline, SA(native), GA(native, baseline-start), HGA(native), CP-SAT.
 Both objectives (unweighted / KTAS-weighted), normal scenario.
 
 CLI:
@@ -36,9 +36,9 @@ def main():
             return baseline(ji)
         if name == "SA":
             return sa_native(ji, weighted=weighted, budget=budget, seed=1000 + args.seed)
-        if name == "GA-seeded":
+        if name == "GA":
             return ga_native(ji, weighted=weighted, budget=budget, seed=2500 + args.seed,
-                             seeded=True, algo="GA-seeded")
+                             seeded=False, algo="GA")
         if name == "HGA":
             return hga_native(ji, weighted=weighted, budget=budget, seed=3000 + args.seed)
         if name == "CP-SAT":
@@ -47,7 +47,7 @@ def main():
         raise ValueError(name)
 
     rows = []
-    algos = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"]
+    algos = ["baseline", "SA", "GA", "HGA", "CP-SAT"]
     print(f"# JNUH5 scaling | native engine | budget={args.budget}s seed={args.seed}", flush=True)
     for obj_name, weighted in OBJ:
         for n in n_list:

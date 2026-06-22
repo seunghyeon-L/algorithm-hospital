@@ -38,7 +38,7 @@ DEFAULT_RANDOM_SEED = 42
 
 # Algorithms shown in the app (canonical jnuh5 names). These keys are used
 # verbatim as the result-dict keys consumed by the frontend.
-COMPARE_ALGOS = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"]
+COMPARE_ALGOS = ["baseline", "SA", "GA", "HGA", "CP-SAT"]
 SCHEDULE_ALGOS = {"baseline", "SA", "GA", "GA-seeded", "HGA", "CP-SAT", "SCIL"}
 
 
@@ -377,7 +377,7 @@ def run_schedule(algo: str, req: ScheduleRequest):
 
 @app.post("/compare", response_model=CompareResponse, tags=["compare"])
 def compare_algorithms(req: CompareRequest):
-    """우리 jnuh5 알고리즘(baseline·SA·GA-seeded·HGA·CP-SAT)을 같은 인스턴스에
+    """우리 jnuh5 알고리즘(baseline·SA·GA·HGA·CP-SAT)을 같은 인스턴스에
     공통 시간 예산으로 실행하고, 선택한 목적(무가중 Σwait 또는 KTAS 가중)으로
     비교 결과를 반환한다. critical_path는 자원무시 DAG 하한(시각화용)."""
     ji = _get_jnuh5_or_raise(req.instance_id)

@@ -5,18 +5,18 @@
 
 import type { CompareResponse } from "../lib/api";
 
-const ALGO_ORDER = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"];
+const ALGO_ORDER = ["baseline", "SA", "GA", "HGA", "CP-SAT"];
 const ALGO_LABELS: Record<string, string> = {
   baseline: "베이스라인",
   SA: "SA",
-  "GA-seeded": "GA-seeded",
+  "GA": "GA",
   HGA: "HGA",
   "CP-SAT": "CP-SAT",
 };
 const ALGO_COLORS: Record<string, string> = {
   baseline: "#9ca3af",
   SA: "#f59e0b",
-  "GA-seeded": "#22c55e",
+  "GA": "#22c55e",
   HGA: "#8b5cf6",
   "CP-SAT": "#3b82f6",
 };

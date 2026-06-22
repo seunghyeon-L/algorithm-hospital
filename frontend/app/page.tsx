@@ -35,12 +35,12 @@ const DEFAULT_FORM: FormState = {
 // JNUH 규모 고정 자원 (사용자 변경 없이 모델 상수로 전달)
 const FIXED = { n_staff: 24, n_anesthesia: 9, n_pacu: 18, turnover: 20 };
 
-const ALGO_KEYS = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as const;
+const ALGO_KEYS = ["baseline", "SA", "GA", "HGA", "CP-SAT"] as const;
 
 const ALGO_COLORS: Record<string, string> = {
   baseline: "#6b7280",
   SA: "#f59e0b",
-  "GA-seeded": "#16a34a",
+  "GA": "#16a34a",
   HGA: "#8b5cf6",
   "CP-SAT": "#2563eb",
 };
@@ -48,7 +48,7 @@ const ALGO_COLORS: Record<string, string> = {
 const ALGO_KO: Record<string, string> = {
   baseline: "베이스라인",
   SA: "SA (담금질)",
-  "GA-seeded": "GA-seeded",
+  "GA": "GA",
   HGA: "HGA",
   "CP-SAT": "CP-SAT",
 };
@@ -125,7 +125,7 @@ export default function Home() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">JNUH 5단계 수술 스케줄링</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            PRECHECK∥PREP→SURG→REC→DISCHARGE · 수술실 12 · KTAS 가중 · baseline·SA·GA-seeded·HGA·CP-SAT
+            PRECHECK∥PREP→SURG→REC→DISCHARGE · 수술실 12 · KTAS 가중 · baseline·SA·GA·HGA·CP-SAT
           </p>
         </div>
         <div className="flex items-center gap-3">

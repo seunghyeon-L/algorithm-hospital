@@ -5,7 +5,7 @@ import type { CompareResponse } from "../lib/api";
 const ALGO_LABELS: Record<string, string> = {
   baseline: "베이스라인 (그리디)",
   SA: "SA (담금질)",
-  "GA-seeded": "GA-seeded (6시드)",
+  "GA": "GA",
   HGA: "HGA (GA+지역탐색)",
   "CP-SAT": "CP-SAT (정확)",
 };
@@ -13,7 +13,7 @@ const ALGO_LABELS: Record<string, string> = {
 const ALGO_COLORS: Record<string, string> = {
   baseline: "#6b7280",
   SA: "#f59e0b",
-  "GA-seeded": "#16a34a",
+  "GA": "#16a34a",
   HGA: "#8b5cf6",
   "CP-SAT": "#2563eb",
 };
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function SummaryCards({ data }: Props) {
-  const algos = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as const;
+  const algos = ["baseline", "SA", "GA", "HGA", "CP-SAT"] as const;
   const objLabel =
     (data.summary?.objective as string) === "weighted" ? "KTAS 가중 대기" : "총 대기 (Σwait)";
 

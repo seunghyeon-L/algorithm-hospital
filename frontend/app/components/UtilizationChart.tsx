@@ -8,18 +8,18 @@
 import { useMemo, useState } from "react";
 import type { CompareResponse, InstanceOut } from "../lib/api";
 
-type AlgoKey = "baseline" | "SA" | "GA-seeded" | "HGA" | "CP-SAT";
+type AlgoKey = "baseline" | "SA" | "GA" | "HGA" | "CP-SAT";
 const ALGO_LABELS: Record<AlgoKey, string> = {
   baseline: "베이스라인",
   SA: "SA",
-  "GA-seeded": "GA-seeded",
+  "GA": "GA",
   HGA: "HGA",
   "CP-SAT": "CP-SAT",
 };
 const ALGO_COLORS: Record<AlgoKey, string> = {
   baseline: "#9ca3af",
   SA: "#f59e0b",
-  "GA-seeded": "#22c55e",
+  "GA": "#22c55e",
   HGA: "#8b5cf6",
   "CP-SAT": "#3b82f6",
 };
@@ -30,8 +30,8 @@ interface Props {
 }
 
 export default function UtilizationChart({ data, instance }: Props) {
-  const [algo, setAlgo] = useState<AlgoKey>("GA-seeded");
-  const algos = (["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as AlgoKey[]).filter((a) => data.results[a]);
+  const [algo, setAlgo] = useState<AlgoKey>("GA");
+  const algos = (["baseline", "SA", "GA", "HGA", "CP-SAT"] as AlgoKey[]).filter((a) => data.results[a]);
   const roomCap = instance.resource_capacities.room ?? 1;
   const staffCap = instance.resource_capacities.staff ?? 1;
 

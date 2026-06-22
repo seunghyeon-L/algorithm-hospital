@@ -212,9 +212,9 @@ def ga(ji: Jnuh5Instance, *, weighted: bool, budget: float = 15.0,
 def hga(ji: Jnuh5Instance, *, weighted: bool, budget: float = 15.0,
         seed: int = 3000) -> Schedule:
     t0 = time.perf_counter()
-    # spend ~70% on GA, ~30% on local search
+    # baseline-start GA (~70%) then hill-climbing local search (~30%)
     ga_sched = ga(ji, weighted=weighted, budget=budget * 0.7,
-                  seed=seed, seeded=True, algo="HGA")
+                  seed=seed, seeded=False, algo="HGA")
     rng = random.Random(seed + 997)
     cur = _sched_to_order(ji, ga_sched)
     cur_obj, cur_sched = _eval(ji, cur, weighted)
