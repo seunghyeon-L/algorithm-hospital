@@ -1,13 +1,12 @@
 """
-tests/test_api.py — FastAPI endpoint tests using TestClient.
+tests/test_api.py — FastAPI endpoint tests (JNUH 5-stage integration).
 
 Coverage:
   - GET  /health
-  - POST /instances (create synthetic instance)
-  - GET  /instances (list)
-  - GET  /instances/{id} (retrieve)
-  - POST /schedule/{algo} for each of baseline, rcpsp, ga
-  - POST /compare — 3-way comparison, all result keys present, metrics sane
+  - POST /instances  (jnuh5 5-stage: PRECHECK∥PREP→SURG→REC→DISCHARGE, room=12)
+  - GET  /instances, /instances/{id}
+  - POST /schedule/{algo} for baseline · SA · GA-seeded · HGA · CP-SAT
+  - POST /compare — 5-way comparison, both objectives (무가중 / KTAS 가중)
 """
 
 from __future__ import annotations
@@ -20,42 +19,30 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.main import app, _instance_cache
+from backend.app.main import app, _instance_cache, _jnuh5_cache
 
 client = TestClient(app)
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-SMALL_PAYLOAD = {
-    "n_tasks": 10,
-    "seed": 7,
-    "n_rooms": 2,
-    "n_staff": 3,
-    "edge_prob": 0.25,
-}
+# 8 patients × 5 stages = 40 tasks; room fixed at JNUH 12.
+SMALL_PAYLOAD = {"n_patients": 8, "seed": 7, "n_rooms": 12}
+ALGOS = {"baseline", "SA", "GA-seeded", "HGA", "CP-SAT"}
 
 
 @pytest.fixture(autouse=True)
 def clear_cache():
-    """Clear instance cache before each test for isolation."""
     _instance_cache.clear()
+    _jnuh5_cache.clear()
     yield
     _instance_cache.clear()
+    _jnuh5_cache.clear()
 
 
 @pytest.fixture
 def created_instance_id():
-    """Create a small instance and return its instance_id."""
     resp = client.post("/instances", json=SMALL_PAYLOAD)
-    assert resp.status_code == 201
+    assert resp.status_code == 201, resp.text
     return resp.json()["instance_id"]
 
-
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
 
 class TestHealth:
     def test_health_ok(self):
@@ -64,36 +51,37 @@ class TestHealth:
         assert resp.json()["status"] == "ok"
 
 
-# ---------------------------------------------------------------------------
-# /instances
-# ---------------------------------------------------------------------------
-
 class TestInstances:
     def test_create_instance_201(self):
         resp = client.post("/instances", json=SMALL_PAYLOAD)
-        assert resp.status_code == 201
+        assert resp.status_code == 201, resp.text
         data = resp.json()
-        assert data["n_tasks"] == 10
+        assert data["n_tasks"] == 40          # 8 patients × 5 stages
+        assert len(data["tasks"]) == 40
         assert "instance_id" in data
-        assert "tasks" in data
-        assert len(data["tasks"]) == 10
 
-    def test_create_instance_has_resource_capacities(self):
-        resp = client.post("/instances", json=SMALL_PAYLOAD)
-        assert resp.status_code == 201
-        data = resp.json()
-        assert "room" in data["resource_capacities"]
-        assert data["resource_capacities"]["room"] == 2
+    def test_jnuh5_resources(self):
+        caps = client.post("/instances", json=SMALL_PAYLOAD).json()["resource_capacities"]
+        assert caps["room"] == 12
+        assert caps["staff"] == 24
+        assert caps["anesthesia"] == 8
+        assert caps["pacu_bed"] == 18
 
-    def test_list_instances_empty(self):
-        resp = client.get("/instances")
-        assert resp.status_code == 200
-        assert resp.json() == []
+    def test_five_stage_labels(self, created_instance_id):
+        tasks = client.get(f"/instances/{created_instance_id}").json()["tasks"]
+        stages = {t["label"].split("·")[-1] for t in tasks.values()}
+        assert stages == {"PRECHECK", "PREP", "SURG", "REC", "DISCHARGE"}
 
-    def test_list_instances_after_create(self, created_instance_id):
-        resp = client.get("/instances")
-        assert resp.status_code == 200
-        ids = [i["instance_id"] for i in resp.json()]
+    def test_crisis_rooms_8(self):
+        caps = client.post("/instances", json={"n_patients": 6, "seed": 1, "n_rooms": 8}
+                           ).json()["resource_capacities"]
+        assert caps["room"] == 8
+
+    def test_list_empty(self):
+        assert client.get("/instances").json() == []
+
+    def test_list_after_create(self, created_instance_id):
+        ids = [i["instance_id"] for i in client.get("/instances").json()]
         assert created_instance_id in ids
 
     def test_get_instance_ok(self, created_instance_id):
@@ -102,197 +90,90 @@ class TestInstances:
         assert resp.json()["instance_id"] == created_instance_id
 
     def test_get_instance_404(self):
-        resp = client.get("/instances/nonexistent-id")
-        assert resp.status_code == 404
+        assert client.get("/instances/nonexistent-id").status_code == 404
 
-    def test_task_has_required_fields(self, created_instance_id):
-        resp = client.get(f"/instances/{created_instance_id}")
-        tasks = resp.json()["tasks"]
-        for task in tasks.values():
-            assert "task_id" in task
-            assert "duration" in task
-            assert "resources" in task
-            assert "predecessors" in task
-
-
-# ---------------------------------------------------------------------------
-# /schedule/{algo}
-# ---------------------------------------------------------------------------
 
 class TestSchedule:
-    def _schedule_request(self, instance_id: str) -> dict:
-        return {
-            "instance_id": instance_id,
-            "time_limit_sec": 5.0,
-            "random_seed": 42,
-            "ga_pop_size": 20,
-            "ga_n_gen": 10,
-        }
+    def _req(self, instance_id: str, weighted: bool = False) -> dict:
+        return {"instance_id": instance_id, "time_limit_sec": 1.0,
+                "random_seed": 42, "weighted": weighted}
 
-    def test_baseline_200(self, created_instance_id):
-        resp = client.post(
-            "/schedule/baseline",
-            json=self._schedule_request(created_instance_id),
-        )
-        assert resp.status_code == 200
+    @pytest.mark.parametrize("algo", sorted(ALGOS))
+    def test_each_algo_200(self, created_instance_id, algo):
+        resp = client.post(f"/schedule/{algo}", json=self._req(created_instance_id))
+        assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["algo"] == "baseline"
         assert data["total_wait"] >= 0
         assert data["makespan"] > 0
-        assert len(data["assignments"]) == 10
+        assert len(data["assignments"]) == 40
 
-    def test_rcpsp_200(self, created_instance_id):
-        resp = client.post(
-            "/schedule/rcpsp",
-            json=self._schedule_request(created_instance_id),
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["algo"] == "rcpsp"
-        assert data["total_wait"] >= 0
-
-    def test_ga_200(self, created_instance_id):
-        resp = client.post(
-            "/schedule/ga",
-            json=self._schedule_request(created_instance_id),
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["algo"] == "ga"
-        assert data["total_wait"] >= 0
-
-    def test_schedule_assignments_have_wait_and_ready(self, created_instance_id):
-        resp = client.post(
-            "/schedule/baseline",
-            json=self._schedule_request(created_instance_id),
-        )
-        for asgn in resp.json()["assignments"].values():
-            assert "wait" in asgn
-            assert "ready" in asgn
+    def test_schedule_assignments_have_wait_ready(self, created_instance_id):
+        data = client.post("/schedule/baseline", json=self._req(created_instance_id)).json()
+        for asgn in data["assignments"].values():
+            assert "wait" in asgn and "ready" in asgn
             assert asgn["wait"] >= 0
-            assert asgn["end"] == asgn["start"] + asgn["wait"] + asgn["ready"] or True
-            # end must be > start
-            assert asgn["end"] > asgn["start"] or asgn["end"] == asgn["start"]
+            assert asgn["end"] >= asgn["start"]
 
     def test_invalid_algo_422(self, created_instance_id):
-        resp = client.post(
-            "/schedule/unknown_algo",
-            json=self._schedule_request(created_instance_id),
-        )
-        assert resp.status_code == 422
+        assert client.post("/schedule/unknown",
+                           json=self._req(created_instance_id)).status_code == 422
 
     def test_missing_instance_404(self):
-        resp = client.post(
-            "/schedule/baseline",
-            json={"instance_id": "no-such-id", "time_limit_sec": 5.0,
-                  "random_seed": 42, "ga_pop_size": 20, "ga_n_gen": 5},
-        )
-        assert resp.status_code == 404
+        assert client.post("/schedule/baseline",
+                           json=self._req("no-such-id")).status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# /compare
-# ---------------------------------------------------------------------------
 
 class TestCompare:
-    def _compare_request(self, instance_id: str) -> dict:
-        return {
-            "instance_id": instance_id,
-            "time_limit_sec": 5.0,
-            "random_seed": 42,
-            "ga_pop_size": 20,
-            "ga_n_gen": 10,
-        }
-
-    def test_compare_200(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        assert resp.status_code == 200
+    def _req(self, instance_id: str, weighted: bool = False) -> dict:
+        return {"instance_id": instance_id, "time_limit_sec": 1.0,
+                "random_seed": 42, "weighted": weighted}
 
     def test_compare_has_all_algos(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        data = resp.json()
-        assert set(data["results"].keys()) == {"baseline", "rcpsp", "ga", "sa"}
+        data = client.post("/compare", json=self._req(created_instance_id)).json()
+        assert set(data["results"].keys()) == ALGOS
 
-    def test_compare_each_result_has_metrics_and_schedule(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        for algo, result in resp.json()["results"].items():
-            assert "metrics" in result, f"{algo} missing metrics"
-            assert "schedule" in result, f"{algo} missing schedule"
+    def test_each_result_has_metrics_and_schedule(self, created_instance_id):
+        data = client.post("/compare", json=self._req(created_instance_id)).json()
+        for algo, result in data["results"].items():
+            assert "metrics" in result and "schedule" in result
 
-    def test_compare_metrics_keys(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        required_keys = {
-            "total_wait", "makespan", "wall_clock_sec", "n_tasks",
-            "resource_utilization", "pct_improvement_vs_baseline",
-        }
-        for algo, result in resp.json()["results"].items():
-            m = result["metrics"]
-            missing = required_keys - set(m.keys())
-            assert not missing, f"{algo} metrics missing keys: {missing}"
+    def test_metrics_keys(self, created_instance_id):
+        data = client.post("/compare", json=self._req(created_instance_id)).json()
+        required = {"total_wait", "makespan", "wall_clock_sec", "n_tasks",
+                    "resource_utilization", "pct_improvement_vs_baseline"}
+        for algo, result in data["results"].items():
+            assert not (required - set(result["metrics"].keys())), algo
 
-    def test_compare_baseline_pct_improvement_zero(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        baseline_pct = resp.json()["results"]["baseline"]["metrics"][
-            "pct_improvement_vs_baseline"
-        ]
-        assert baseline_pct == 0.0
+    def test_baseline_pct_zero(self, created_instance_id):
+        data = client.post("/compare", json=self._req(created_instance_id)).json()
+        assert data["results"]["baseline"]["metrics"]["pct_improvement_vs_baseline"] == 0.0
 
-    def test_compare_has_critical_path(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        cp = resp.json()["critical_path"]
-        assert "length" in cp
-        assert "task_ids" in cp
+    def test_critical_path(self, created_instance_id):
+        cp = client.post("/compare", json=self._req(created_instance_id)).json()["critical_path"]
         assert cp["length"] > 0
         assert len(cp["task_ids"]) >= 1
 
-    def test_compare_summary_has_improvement_keys(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        summary = resp.json()["summary"]
+    def test_summary_keys(self, created_instance_id):
+        summary = client.post("/compare", json=self._req(created_instance_id)).json()["summary"]
         assert "baseline_total_wait" in summary
-        assert "rcpsp_total_wait" in summary
-        assert "ga_total_wait" in summary
+        assert "GA-seeded_total_wait" in summary
+        assert "CP-SAT_total_wait" in summary
+        assert summary["objective"] == "unweighted"
 
-    def test_compare_total_waits_non_negative(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        for algo, result in resp.json()["results"].items():
-            tw = result["metrics"]["total_wait"]
-            assert tw >= 0, f"{algo} total_wait={tw} is negative"
+    def test_weighted_objective(self, created_instance_id):
+        summary = client.post("/compare",
+                              json=self._req(created_instance_id, weighted=True)
+                              ).json()["summary"]
+        assert summary["objective"] == "weighted"
 
-    def test_compare_missing_instance_404(self):
-        resp = client.post(
-            "/compare",
-            json={"instance_id": "no-such-id", "time_limit_sec": 5.0,
-                  "random_seed": 42, "ga_pop_size": 20, "ga_n_gen": 5},
-        )
-        assert resp.status_code == 404
+    def test_total_waits_non_negative(self, created_instance_id):
+        data = client.post("/compare", json=self._req(created_instance_id)).json()
+        for algo, result in data["results"].items():
+            assert result["metrics"]["total_wait"] >= 0
 
-    def test_compare_instance_id_in_response(self, created_instance_id):
-        resp = client.post(
-            "/compare",
-            json=self._compare_request(created_instance_id),
-        )
-        assert resp.json()["instance_id"] == created_instance_id
+    def test_missing_instance_404(self):
+        assert client.post("/compare", json=self._req("no-such-id")).status_code == 404
+
+    def test_instance_id_in_response(self, created_instance_id):
+        data = client.post("/compare", json=self._req(created_instance_id)).json()
+        assert data["instance_id"] == created_instance_id

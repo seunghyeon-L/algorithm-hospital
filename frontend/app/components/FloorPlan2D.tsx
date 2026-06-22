@@ -10,13 +10,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CompareResponse, InstanceOut } from "../lib/api";
 
-type AlgoKey = "baseline" | "rcpsp" | "ga" | "sa";
+type AlgoKey = "baseline" | "SA" | "GA-seeded" | "HGA" | "CP-SAT";
 
 const ALGO_LABELS: Record<AlgoKey, string> = {
-  baseline: "베이스라인 (그리디)",
-  rcpsp: "RCPSP (CP-SAT)",
-  ga: "GA (유전)",
-  sa: "SA (담금질)",
+  baseline: "베이스라인",
+  SA: "SA",
+  "GA-seeded": "GA-seeded",
+  HGA: "HGA",
+  "CP-SAT": "CP-SAT",
 };
 
 interface ActiveTask {
@@ -42,7 +43,7 @@ function clamp(v: number, lo: number, hi: number) {
 }
 
 export default function FloorPlan2D({ instance, result }: Props) {
-  const [algo, setAlgo] = useState<AlgoKey>("rcpsp");
+  const [algo, setAlgo] = useState<AlgoKey>("HGA");
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(40); // 분/초 (재생 배속)
@@ -84,14 +85,17 @@ export default function FloorPlan2D({ instance, result }: Props) {
 
   const tasks = useMemo<ActiveTask[]>(() => {
     if (!schedule) return [];
-    return Object.values(schedule.assignments).map((a) => ({
-      task_id: a.task_id,
-      room: a.room ?? "room-1",
-      start: a.start,
-      end: a.end,
-      staff: instance.tasks[a.task_id]?.resources?.staff ?? 0,
-      label: instance.tasks[a.task_id]?.label ?? null,
-    }));
+    // 5단계 모델에서 수술실을 점유하는 작업은 SURG뿐 — room이 배정된 작업만 평면도에 표시
+    return Object.values(schedule.assignments)
+      .filter((a) => !!a.room)
+      .map((a) => ({
+        task_id: a.task_id,
+        room: a.room as string,
+        start: a.start,
+        end: a.end,
+        staff: instance.tasks[a.task_id]?.resources?.staff ?? 0,
+        label: instance.tasks[a.task_id]?.label ?? null,
+      }));
   }, [schedule, instance]);
 
   // ---- 반응형 치수 계산: 보드 폭을 채우도록 수술실 크기 산출 ----
@@ -238,7 +242,7 @@ export default function FloorPlan2D({ instance, result }: Props) {
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-2xl font-bold">2D 평면도 동선 시뮬레이션</h2>
         <div className="flex gap-1.5">
-          {(["baseline", "rcpsp", "ga", "sa"] as AlgoKey[]).map((a) => (
+          {(["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as AlgoKey[]).map((a) => (
             <button
               key={a}
               onClick={() => setAlgo(a)}

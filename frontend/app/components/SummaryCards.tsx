@@ -4,16 +4,18 @@ import type { CompareResponse } from "../lib/api";
 
 const ALGO_LABELS: Record<string, string> = {
   baseline: "베이스라인 (그리디)",
-  rcpsp: "RCPSP (CP-SAT)",
-  ga: "GA (유전)",
-  sa: "SA (담금질)",
+  SA: "SA (담금질)",
+  "GA-seeded": "GA-seeded (6시드)",
+  HGA: "HGA (GA+지역탐색)",
+  "CP-SAT": "CP-SAT (정확)",
 };
 
 const ALGO_COLORS: Record<string, string> = {
   baseline: "#6b7280",
-  rcpsp: "#2563eb",
-  ga: "#16a34a",
-  sa: "#f59e0b",
+  SA: "#f59e0b",
+  "GA-seeded": "#16a34a",
+  HGA: "#8b5cf6",
+  "CP-SAT": "#2563eb",
 };
 
 interface Props {
@@ -21,12 +23,14 @@ interface Props {
 }
 
 export default function SummaryCards({ data }: Props) {
-  const algos = ["baseline", "rcpsp", "ga", "sa"] as const;
+  const algos = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as const;
+  const objLabel =
+    (data.summary?.objective as string) === "weighted" ? "KTAS 가중 대기" : "총 대기 (Σwait)";
 
   return (
     <section>
-      <h2 className="text-xl font-semibold mb-3">결과 요약</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <h2 className="text-xl font-semibold mb-3">결과 요약 · {objLabel}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {algos.map((algo) => {
           const res = data.results[algo];
           if (!res) return null;

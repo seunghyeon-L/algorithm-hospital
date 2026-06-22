@@ -22,14 +22,24 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .data import generate_instance, parse_psplib
 from .model import Instance
-from .baseline import schedule_baseline
-from .rcpsp import schedule_rcpsp, DEFAULT_TIME_LIMIT_SEC, DEFAULT_RANDOM_SEED
-from .ga import schedule_ga
-from .sa import schedule_sa
 from .metrics import evaluate
 from . import graph as _graph
+from .jnuh5 import (
+    generate_jnuh5_instance,
+    Jnuh5Instance,
+    objective_value,
+    patient_metrics,
+)
+from .jnuh5_algos import run_algorithm
+
+DEFAULT_TIME_LIMIT_SEC = 8.0
+DEFAULT_RANDOM_SEED = 42
+
+# Algorithms shown in the app (canonical jnuh5 names). These keys are used
+# verbatim as the result-dict keys consumed by the frontend.
+COMPARE_ALGOS = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"]
+SCHEDULE_ALGOS = {"baseline", "SA", "GA", "GA-seeded", "HGA", "CP-SAT", "SCIL"}
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +69,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 
 _instance_cache: Dict[str, Instance] = {}
+_jnuh5_cache: Dict[str, Jnuh5Instance] = {}
 
 
 def _get_or_raise(instance_id: str) -> Instance:
@@ -72,17 +83,29 @@ def _get_or_raise(instance_id: str) -> Instance:
     return _instance_cache[instance_id]
 
 
+def _get_jnuh5_or_raise(instance_id: str) -> Jnuh5Instance:
+    """Retrieve the cached Jnuh5Instance (keeps KTAS weights/patients) or raise 404."""
+    if instance_id not in _jnuh5_cache:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Instance '{instance_id}' not found. Create it first via POST /instances.",
+        )
+    return _jnuh5_cache[instance_id]
+
+
 # ---------------------------------------------------------------------------
 # Pydantic request / response schemas
 # ---------------------------------------------------------------------------
 
 class GenerateInstanceRequest(BaseModel):
-    n_tasks: int = Field(default=35, ge=1, le=200, description="Number of tasks (1–200)")
-    seed: int = Field(default=42, description="RNG seed for reproducibility")
-    n_rooms: int = Field(default=3, ge=1, le=20, description="Number of operating rooms")
-    n_staff: int = Field(default=5, ge=1, le=50, description="Total staff capacity")
-    edge_prob: float = Field(default=0.25, ge=0.0, le=1.0, description="Precedence edge probability")
-    turnover: int = Field(default=20, ge=0, le=120, description="Room turnover/cleanup minutes between consecutive cases")
+    n_patients: int = Field(default=8, ge=1, le=40, description="환자 수 (각 5단계 작업)")
+    seed: int = Field(default=42, description="재현용 RNG 시드")
+    n_rooms: int = Field(default=12, ge=1, le=20, description="수술실 수 (JNUH 평상 12 · 위기 8)")
+    n_staff: int = Field(default=24, ge=1, le=80, description="간호·수술 인력")
+    n_anesthesia: int = Field(default=8, ge=1, le=40, description="마취 자원")
+    n_pacu: int = Field(default=18, ge=1, le=80, description="회복실 베드(PACU)")
+    include_emergency: bool = Field(default=False, description="응급 1명 삽입(도착 t=120분)")
+    turnover: int = Field(default=20, ge=0, le=120, description="수술실 전환시간(분)")
 
 
 class TaskOut(BaseModel):
@@ -152,23 +175,19 @@ class CriticalPathOut(BaseModel):
 
 class ScheduleRequest(BaseModel):
     instance_id: str
-    # rcpsp / ga optional tuning
-    time_limit_sec: float = Field(default=DEFAULT_TIME_LIMIT_SEC, ge=1.0)
+    time_limit_sec: float = Field(default=DEFAULT_TIME_LIMIT_SEC, ge=1.0, description="알고리즘당 시간 예산(초)")
     random_seed: int = Field(default=DEFAULT_RANDOM_SEED)
-    ga_pop_size: int = Field(default=100, ge=10)
-    ga_n_gen: int = Field(default=200, ge=1)
+    weighted: bool = Field(default=False, description="True=KTAS 가중 목적, False=무가중 Σwait")
 
 
 class CompareRequest(BaseModel):
     instance_id: str
     time_limit_sec: float = Field(
-        default=DEFAULT_TIME_LIMIT_SEC,
-        ge=1.0,
-        description="Wall-clock budget for RCPSP and GA (fair comparison)",
+        default=DEFAULT_TIME_LIMIT_SEC, ge=1.0,
+        description="각 알고리즘 공통 시간 예산(공정 비교)",
     )
     random_seed: int = Field(default=DEFAULT_RANDOM_SEED)
-    ga_pop_size: int = Field(default=100, ge=10)
-    ga_n_gen: int = Field(default=200, ge=1)
+    weighted: bool = Field(default=False, description="True=KTAS 가중 목적, False=무가중 Σwait")
 
 
 class AlgoResult(BaseModel):
@@ -246,6 +265,33 @@ def _metrics_to_out(m) -> MetricsOut:
     )
 
 
+def _jnuh5_metrics_out(ji: Jnuh5Instance, sched, name: str, weighted: bool,
+                       base_obj: Optional[float]) -> MetricsOut:
+    """Metrics for a jnuh5 schedule. total_wait = chosen objective (weighted or not);
+    resource_utilization/makespan via the generic evaluator."""
+    inst = ji.instance
+    obj = objective_value(ji, sched, weighted=weighted)
+    gm = evaluate(sched, inst)  # generic: resource_utilization + makespan
+    if name == "baseline":
+        pct: Optional[float] = 0.0
+    elif base_obj is None:
+        pct = None
+    elif base_obj <= 0:
+        pct = 0.0          # baseline already optimal (0 wait) → nothing to improve
+    else:
+        pct = 100.0 * (base_obj - obj) / base_obj
+    return MetricsOut(
+        instance_id=inst.instance_id,
+        algo=name,
+        total_wait=int(round(obj)),
+        makespan=int(gm.makespan),
+        resource_utilization=gm.resource_utilization,
+        wall_clock_sec=round(sched.wall_clock_sec, 3),
+        n_tasks=len(inst.tasks),
+        pct_improvement_vs_baseline=(round(pct, 2) if pct is not None else None),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Routes — /instances
 # ---------------------------------------------------------------------------
@@ -271,16 +317,19 @@ def create_instance(req: GenerateInstanceRequest):
 
     Returns the full instance (tasks + edges) for DAG visualisation.
     """
-    inst = generate_instance(
-        n_tasks=req.n_tasks,
+    ji = generate_jnuh5_instance(
+        n_patients=req.n_patients,
         seed=req.seed,
         n_rooms=req.n_rooms,
         n_staff=req.n_staff,
-        edge_prob=req.edge_prob,
+        n_anesthesia=req.n_anesthesia,
+        n_pacu=req.n_pacu,
         turnover=req.turnover,
+        include_emergency=req.include_emergency,
     )
-    _instance_cache[inst.instance_id] = inst
-    return _instance_to_out(inst)
+    _jnuh5_cache[ji.instance.instance_id] = ji
+    _instance_cache[ji.instance.instance_id] = ji.instance
+    return _instance_to_out(ji.instance)
 
 
 @app.get("/instances/{instance_id}", response_model=InstanceOut, tags=["instances"])
@@ -302,42 +351,23 @@ def run_schedule(algo: str, req: ScheduleRequest):
 
     Returns the schedule with per-task start/end/room/wait.
     """
-    _VALID_ALGOS = {"baseline", "rcpsp", "ga", "sa"}
-    if algo not in _VALID_ALGOS:
+    if algo not in SCHEDULE_ALGOS:
         raise HTTPException(
             status_code=422,
-            detail=f"Unknown algo '{algo}'. Valid: {sorted(_VALID_ALGOS)}",
+            detail=f"Unknown algo '{algo}'. Valid: {sorted(SCHEDULE_ALGOS)}",
         )
 
-    instance = _get_or_raise(req.instance_id)
+    ji = _get_jnuh5_or_raise(req.instance_id)
 
     try:
-        if algo == "baseline":
-            sched = schedule_baseline(instance)
-        elif algo == "rcpsp":
-            sched = schedule_rcpsp(
-                instance,
-                time_limit_sec=req.time_limit_sec,
-                random_seed=req.random_seed,
-            )
-        elif algo == "ga":
-            sched = schedule_ga(
-                instance,
-                seed=req.random_seed,
-                pop_size=req.ga_pop_size,
-                n_gen=req.ga_n_gen,
-                time_limit_sec=req.time_limit_sec,
-            )
-        else:  # sa
-            sched = schedule_sa(
-                instance,
-                seed=req.random_seed,
-                time_limit_sec=req.time_limit_sec,
-            )
-    except ValueError as exc:
+        sched = run_algorithm(
+            algo, ji, weighted=req.weighted,
+            budget=req.time_limit_sec, seed=req.random_seed,
+        )
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-    return _schedule_to_out(sched, instance)
+    return _schedule_to_out(sched, ji.instance)
 
 
 # ---------------------------------------------------------------------------
@@ -346,64 +376,32 @@ def run_schedule(algo: str, req: ScheduleRequest):
 
 @app.post("/compare", response_model=CompareResponse, tags=["compare"])
 def compare_algorithms(req: CompareRequest):
-    """Run baseline + rcpsp + ga on the same instance and return a full comparison.
-
-    All three algorithms run with the same time_limit_sec budget (fair).
-    Returns per-algorithm schedule + metrics + %improvement, plus the
-    critical path (resource-free DAG lower bound) for visualisation.
-    """
-    instance = _get_or_raise(req.instance_id)
+    """우리 jnuh5 알고리즘(baseline·SA·GA-seeded·HGA·CP-SAT)을 같은 인스턴스에
+    공통 시간 예산으로 실행하고, 선택한 목적(무가중 Σwait 또는 KTAS 가중)으로
+    비교 결과를 반환한다. critical_path는 자원무시 DAG 하한(시각화용)."""
+    ji = _get_jnuh5_or_raise(req.instance_id)
+    inst = ji.instance
 
     # --- critical path (reference lower bound, not a scheduler) ---
     try:
-        cp_length, cp_path = _graph.critical_path(instance)
+        cp_length, cp_path = _graph.critical_path(inst)
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Critical path computation failed: {exc}",
         )
 
-    # --- run all three algorithms ---
+    # --- run our 5 algorithms under one shared budget + chosen objective ---
     errors: List[str] = []
-    schedules = {}
-
-    # baseline (always fast)
-    try:
-        schedules["baseline"] = schedule_baseline(instance)
-    except Exception as exc:
-        errors.append(f"baseline: {exc}")
-
-    # rcpsp
-    try:
-        schedules["rcpsp"] = schedule_rcpsp(
-            instance,
-            time_limit_sec=req.time_limit_sec,
-            random_seed=req.random_seed,
-        )
-    except Exception as exc:
-        errors.append(f"rcpsp: {exc}")
-
-    # ga
-    try:
-        schedules["ga"] = schedule_ga(
-            instance,
-            seed=req.random_seed,
-            pop_size=req.ga_pop_size,
-            n_gen=req.ga_n_gen,
-            time_limit_sec=req.time_limit_sec,
-        )
-    except Exception as exc:
-        errors.append(f"ga: {exc}")
-
-    # sa (simulated annealing) — trajectory-based metaheuristic
-    try:
-        schedules["sa"] = schedule_sa(
-            instance,
-            seed=req.random_seed,
-            time_limit_sec=req.time_limit_sec,
-        )
-    except Exception as exc:
-        errors.append(f"sa: {exc}")
+    schedules: Dict[str, Any] = {}
+    for name in COMPARE_ALGOS:
+        try:
+            schedules[name] = run_algorithm(
+                name, ji, weighted=req.weighted,
+                budget=req.time_limit_sec, seed=req.random_seed,
+            )
+        except Exception as exc:
+            errors.append(f"{name}: {exc}")
 
     if not schedules:
         raise HTTPException(
@@ -411,53 +409,34 @@ def compare_algorithms(req: CompareRequest):
             detail=f"All algorithms failed: {'; '.join(errors)}",
         )
 
-    # --- evaluate with shared baseline_wait for %improvement ---
-    baseline_wait: Optional[int] = None
-    if "baseline" in schedules:
-        baseline_wait = schedules["baseline"].total_wait(instance)
+    # baseline objective value = denominator for %improvement (same objective)
+    base_obj = (objective_value(ji, schedules["baseline"], weighted=req.weighted)
+                if "baseline" in schedules else None)
 
     results: Dict[str, AlgoResult] = {}
-    for algo, sched in schedules.items():
-        m = evaluate(
-            sched,
-            instance,
-            baseline_wait=baseline_wait if algo != "baseline" else None,
-        )
-        if algo == "baseline" and baseline_wait is not None:
-            # attach 0% improvement for the baseline itself
-            from .metrics import ScheduleMetrics
-            m = ScheduleMetrics(
-                instance_id=m.instance_id,
-                algo=m.algo,
-                total_wait=m.total_wait,
-                makespan=m.makespan,
-                resource_utilization=m.resource_utilization,
-                wall_clock_sec=m.wall_clock_sec,
-                n_tasks=m.n_tasks,
-                pct_improvement_vs_baseline=0.0,
-                task_breakdown=m.task_breakdown,
-            )
-        results[algo] = AlgoResult(
-            metrics=_metrics_to_out(m),
-            schedule=_schedule_to_out(sched, instance),
+    for name, sched in schedules.items():
+        results[name] = AlgoResult(
+            metrics=_jnuh5_metrics_out(ji, sched, name, req.weighted, base_obj),
+            schedule=_schedule_to_out(sched, inst),
         )
 
     # --- summary card (top-level convenience numbers) ---
     summary: Dict[str, Any] = {
         "critical_path_length": cp_length,
+        "objective": "weighted" if req.weighted else "unweighted",
         "errors": errors,
     }
-    for algo, res in results.items():
-        summary[f"{algo}_total_wait"] = res.metrics.total_wait
-        summary[f"{algo}_makespan"] = res.metrics.makespan
-        summary[f"{algo}_wall_clock_sec"] = round(res.metrics.wall_clock_sec, 3)
+    for name, res in results.items():
+        summary[f"{name}_total_wait"] = res.metrics.total_wait
+        summary[f"{name}_makespan"] = res.metrics.makespan
+        summary[f"{name}_wall_clock_sec"] = round(res.metrics.wall_clock_sec, 3)
         if res.metrics.pct_improvement_vs_baseline is not None:
-            summary[f"{algo}_pct_improvement"] = round(
+            summary[f"{name}_pct_improvement"] = round(
                 res.metrics.pct_improvement_vs_baseline, 2
             )
 
     return CompareResponse(
-        instance_id=instance.instance_id,
+        instance_id=inst.instance_id,
         critical_path=CriticalPathOut(length=cp_length, task_ids=cp_path),
         results=results,
         summary=summary,

@@ -10,11 +10,13 @@ export const API_BASE =
 // ---------------------------------------------------------------------------
 
 export interface GenerateInstanceRequest {
-  n_tasks: number;
+  n_patients: number;
   seed: number;
   n_rooms: number;
   n_staff: number;
-  edge_prob: number;
+  n_anesthesia: number;
+  n_pacu: number;
+  include_emergency: boolean;
   turnover?: number;
 }
 
@@ -87,8 +89,7 @@ export interface CompareRequest {
   instance_id: string;
   time_limit_sec: number;
   random_seed: number;
-  ga_pop_size: number;
-  ga_n_gen: number;
+  weighted: boolean;
 }
 
 // ---------------------------------------------------------------------------

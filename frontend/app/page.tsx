@@ -15,39 +15,42 @@ import UtilizationChart from "./components/UtilizationChart";
 // ---------------------------------------------------------------------------
 
 interface FormState {
-  n_tasks: number;
+  n_patients: number;
   seed: number;
-  n_rooms: number;
-  n_staff: number;
-  turnover: number;
+  n_rooms: number;          // 12 평상 / 8 위기
+  weighted: boolean;        // KTAS 가중 목적 on/off
+  include_emergency: boolean;
   time_limit_sec: number;
-  ga_pop_size: number;
-  ga_n_gen: number;
 }
 
 const DEFAULT_FORM: FormState = {
-  n_tasks: 20,
+  n_patients: 20,
   seed: 42,
-  n_rooms: 3,
-  n_staff: 5,
-  turnover: 20,
-  time_limit_sec: 10,
-  ga_pop_size: 80,
-  ga_n_gen: 100,
+  n_rooms: 12,
+  weighted: false,
+  include_emergency: false,
+  time_limit_sec: 5,
 };
+
+// JNUH 규모 고정 자원 (사용자 변경 없이 모델 상수로 전달)
+const FIXED = { n_staff: 24, n_anesthesia: 8, n_pacu: 18, turnover: 20 };
+
+const ALGO_KEYS = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as const;
 
 const ALGO_COLORS: Record<string, string> = {
   baseline: "#6b7280",
-  rcpsp: "#2563eb",
-  ga: "#16a34a",
-  sa: "#f59e0b",
+  SA: "#f59e0b",
+  "GA-seeded": "#16a34a",
+  HGA: "#8b5cf6",
+  "CP-SAT": "#2563eb",
 };
 
 const ALGO_KO: Record<string, string> = {
   baseline: "베이스라인",
-  rcpsp: "RCPSP",
-  ga: "GA",
-  sa: "SA",
+  SA: "SA (담금질)",
+  "GA-seeded": "GA-seeded",
+  HGA: "HGA",
+  "CP-SAT": "CP-SAT",
 };
 
 type TabKey = "floor" | "util" | "charts" | "gantt" | "dag";
@@ -72,7 +75,7 @@ export default function Home() {
   const [result, setResult] = useState<CompareResponse | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("floor");
 
-  function updateForm(key: keyof FormState, value: number) {
+  function updateForm(key: keyof FormState, value: number | boolean) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -82,24 +85,25 @@ export default function Home() {
     setResult(null);
     setInstance(null);
     try {
-      // 1단계: 인스턴스 생성
+      // 1단계: JNUH 5단계 인스턴스 생성 (room=12 고정 등 모델 자원)
       const inst = await createInstance({
-        n_tasks: form.n_tasks,
+        n_patients: form.n_patients,
         seed: form.seed,
         n_rooms: form.n_rooms,
-        n_staff: form.n_staff,
-        edge_prob: 0.25,
-        turnover: form.turnover,
+        n_staff: FIXED.n_staff,
+        n_anesthesia: FIXED.n_anesthesia,
+        n_pacu: FIXED.n_pacu,
+        include_emergency: form.include_emergency,
+        turnover: FIXED.turnover,
       });
       setInstance(inst);
 
-      // 2단계: 3자 비교 실행
+      // 2단계: 5개 알고리즘 비교 (무가중 / KTAS 가중 선택)
       const cmp = await compareAlgos({
         instance_id: inst.instance_id,
         time_limit_sec: form.time_limit_sec,
         random_seed: form.seed,
-        ga_pop_size: form.ga_pop_size,
-        ga_n_gen: form.ga_n_gen,
+        weighted: form.weighted,
       });
       setResult(cmp);
     } catch (e: unknown) {
@@ -119,9 +123,9 @@ export default function Home() {
       {/* 헤더 */}
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">병원 수술 스케줄링</h1>
+          <h1 className="text-2xl font-bold text-gray-800">JNUH 5단계 수술 스케줄링</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            베이스라인 · RCPSP(CP-SAT) · GA(유전) · SA(담금질) — 총 대기시간(Σwait) 최소화
+            PRECHECK∥PREP→SURG→REC→DISCHARGE · 수술실 12 · KTAS 가중 · baseline·SA·GA-seeded·HGA·CP-SAT
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -145,16 +149,17 @@ export default function Home() {
         {/* 파라미터 폼 */}
         <section className="bg-white rounded-xl border shadow-sm p-5">
           <h2 className="text-lg font-semibold mb-4">파라미터</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-            <NumberField label="작업 수" min={5} max={50} step={1} value={form.n_tasks} onChange={(v) => updateForm("n_tasks", v)} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+            <NumberField label="환자 수 (각 5단계)" min={5} max={40} step={1} value={form.n_patients} onChange={(v) => updateForm("n_patients", v)} />
             <NumberField label="시드 (재현용)" min={0} max={9999} step={1} value={form.seed} onChange={(v) => updateForm("seed", v)} />
-            <NumberField label="수술실 수" min={1} max={10} step={1} value={form.n_rooms} onChange={(v) => updateForm("n_rooms", v)} />
-            <NumberField label="의료진 수" min={1} max={20} step={1} value={form.n_staff} onChange={(v) => updateForm("n_staff", v)} />
-            <NumberField label="전환시간 (분)" min={0} max={60} step={5} value={form.turnover} onChange={(v) => updateForm("turnover", v)} />
-            <NumberField label="시간예산 (초)" min={1} max={120} step={1} value={form.time_limit_sec} onChange={(v) => updateForm("time_limit_sec", v)} />
-            <NumberField label="GA 개체수" min={10} max={500} step={10} value={form.ga_pop_size} onChange={(v) => updateForm("ga_pop_size", v)} />
-            <NumberField label="GA 세대수" min={10} max={2000} step={10} value={form.ga_n_gen} onChange={(v) => updateForm("ga_n_gen", v)} />
+            <NumberField label="시간예산 (초/알고)" min={1} max={60} step={1} value={form.time_limit_sec} onChange={(v) => updateForm("time_limit_sec", v)} />
+            <ToggleField label="목적함수" value={form.weighted} onText="KTAS 가중" offText="무가중 Σwait" onChange={(v) => updateForm("weighted", v)} />
+            <ToggleField label="수술실 (JNUH)" value={form.n_rooms === 8} onText="위기 8실" offText="평상 12실" onChange={(v) => updateForm("n_rooms", v ? 8 : 12)} />
+            <ToggleField label="응급 삽입" value={form.include_emergency} onText="포함 (t=120)" offText="없음" onChange={(v) => updateForm("include_emergency", v)} />
           </div>
+          <p className="text-xs text-gray-400 mt-3">
+            고정 자원(JNUH 규모): 간호·수술 인력 24 · 마취 8 · 회복베드(PACU) 18 · 전환시간 20분. 작은 환자 수에선 용량이 남아 대기≈0이며, 20명 이상에서 알고리즘 차이가 드러납니다.
+          </p>
           <button
             onClick={handleRun}
             disabled={loading}
@@ -227,14 +232,14 @@ export default function Home() {
             {activeTab === "gantt" && (
               <div className="bg-white rounded-xl border shadow-sm p-5 space-y-6">
                 <h2 className="text-xl font-semibold">간트차트 (수술실별 타임라인)</h2>
-                {(["baseline", "rcpsp", "ga", "sa"] as const).map((algo) => {
+                {ALGO_KEYS.map((algo) => {
                   const res = result.results[algo];
                   if (!res) return null;
                   return (
                     <GanttChart
                       key={algo}
                       schedule={res.schedule}
-                      title={`${ALGO_KO[algo]} — 총 대기 ${res.metrics.total_wait}분 · makespan ${res.metrics.makespan}분`}
+                      title={`${ALGO_KO[algo]} — 대기 ${res.metrics.total_wait.toLocaleString()} · makespan ${res.metrics.makespan}분`}
                       accentColor={ALGO_COLORS[algo]}
                     />
                   );
@@ -286,6 +291,37 @@ function NumberField({
         onChange={(e) => onChange(Number(e.target.value))}
         className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
       />
+    </div>
+  );
+}
+
+function ToggleField({
+  label,
+  value,
+  onText,
+  offText,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onText: string;
+  offText: string;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-gray-500">{label}</label>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className={`border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+          value
+            ? "bg-blue-600 text-white border-blue-600"
+            : "bg-white text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        {value ? onText : offText}
+      </button>
     </div>
   );
 }
