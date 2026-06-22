@@ -33,7 +33,7 @@ const DEFAULT_FORM: FormState = {
 };
 
 // JNUH 규모 고정 자원 (사용자 변경 없이 모델 상수로 전달)
-const FIXED = { n_staff: 14, n_anesthesia: 9, n_pacu: 18, turnover: 20 };
+const FIXED = { n_staff: 24, n_anesthesia: 9, n_pacu: 18, turnover: 20 };
 
 const ALGO_KEYS = ["baseline", "SA", "GA-seeded", "HGA", "CP-SAT"] as const;
 
@@ -158,7 +158,7 @@ export default function Home() {
             <ToggleField label="응급 삽입" value={form.include_emergency} onText="포함 (t=120)" offText="없음" onChange={(v) => updateForm("include_emergency", v)} />
           </div>
           <p className="text-xs text-gray-400 mt-3">
-            자원(제주대병원 정보공개 실측·2025): 수술실 12 · 마취 전문의 9 · 간호 동시 ≈14(43명÷3교대) · 회복베드 18(추정) · 전환 20분.
+            자원(제주대병원 정보공개 실측·2025): 수술실 12 · 마취 전문의 9 · 간호 주간 동시 ≈24(12실×2명; FOIA 43명 3교대·주간집중, 유사병원 유추) · 회복베드 18(추정) · 전환 20분.
             실제 <b>일평균 수술 ≈ 38건/일</b>(연 9,666건÷250 평일; 평일 평균 36.6건). 환자 수를 하루치(≈38) 안팎으로 두면 실제 운영에 가깝고, 그 부근에서 알고리즘 차이가 드러납니다.
           </p>
           <button

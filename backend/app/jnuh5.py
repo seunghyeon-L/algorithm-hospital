@@ -107,8 +107,9 @@ def generate_jnuh5_instance(
     *,
     scenario: str = "normal",
     n_rooms: int = 12,
-    n_staff: int = 14,        # FOIA 표3 간호 43명÷3교대 ≈ 동시 가용 14
-    n_anesthesia: int = 9,    # FOIA 표3 마취통증의학과 전문의 9
+    n_staff: int = 24,        # 주간 동시 간호 ≈ 12실×2(소독+순환). FOIA 43명은 3교대 총원이나
+                              # 수술 주간집중이라 ÷3=14는 과소 → 12×2=24 (유사 한국병원·AORN 표준 유추)
+    n_anesthesia: int = 9,    # FOIA 표3 마취통증의학과 전문의 9 (병목)
     n_pacu: int = 18,         # 미제공(추정 유지, PACU:OR≈1.5)
     turnover: int = 20,
     include_emergency: bool = False,

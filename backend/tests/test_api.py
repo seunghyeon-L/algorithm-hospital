@@ -63,7 +63,7 @@ class TestInstances:
     def test_jnuh5_resources(self):
         caps = client.post("/instances", json=SMALL_PAYLOAD).json()["resource_capacities"]
         assert caps["room"] == 12
-        assert caps["staff"] == 14          # FOIA 간호 43÷3교대
+        assert caps["staff"] == 24          # 주간 동시 ≈12실×2명 (FOIA 43명 3교대·주간집중)
         assert caps["anesthesia"] == 9      # FOIA 마취 전문의 9
         assert caps["pacu_bed"] == 18
 
